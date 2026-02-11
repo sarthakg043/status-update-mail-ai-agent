@@ -94,6 +94,10 @@ USER_INSTRUCTIONS=Please draft a professional status update email summarizing my
 
 ## Usage
 
+### Quick Start
+
+See [QUICKSTART.md](QUICKSTART.md) for a 5-minute setup guide.
+
 ### Run the Agent
 
 ```bash
@@ -105,6 +109,14 @@ npm start
 ```bash
 npm run dev
 ```
+
+### Examples
+
+Check out [EXAMPLES.md](EXAMPLES.md) for detailed usage examples including:
+- Daily status updates
+- Weekly team reports
+- Project milestone reports
+- Automation with cron jobs and task scheduler
 
 ## Configuration Options
 
@@ -182,15 +194,23 @@ status-update-mail-ai-agent/
 │   ├── aiService.js      # Google Gemini AI integration
 │   └── emailService.js   # Email sending functionality
 ├── .env.example          # Example environment configuration
-├── .gitignore           # Git ignore rules
-├── package.json         # Project dependencies and scripts
-├── LICENSE              # MIT License
-└── README.md            # This file
+├── .gitignore            # Git ignore rules
+├── package.json          # Project dependencies and scripts
+├── package-lock.json     # Dependency lock file
+├── README.md             # Main documentation
+├── QUICKSTART.md         # Quick setup guide
+├── EXAMPLES.md           # Usage examples
+├── TROUBLESHOOTING.md    # Troubleshooting guide
+├── CONTRIBUTING.md       # Contribution guidelines
+├── CHANGELOG.md          # Version history
+└── LICENSE               # MIT License
 ```
 
 ## Troubleshooting
 
-### Common Issues
+For detailed troubleshooting information, see [TROUBLESHOOTING.md](TROUBLESHOOTING.md).
+
+### Quick Fixes
 
 1. **"Missing required environment variables"**
    - Ensure all required variables are set in your `.env` file
