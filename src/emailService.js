@@ -76,28 +76,78 @@ class EmailService {
   }
 
   /**
+   * Escape HTML special characters to prevent XSS
+   * @param {string} text - Text to escape
+   * @returns {string} Escaped text
+   */
+  escapeHtml(text) {
+    const htmlEscapes = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    };
+    return text.replace(/[&<>"']/g, char => htmlEscapes[char]);
+  }
+
+  /**
    * Convert plain text to basic HTML format
    * @param {string} text - Plain text content
    * @returns {string} HTML formatted content
    */
   formatAsHTML(text) {
-    // Basic HTML formatting: convert line breaks to <br> and preserve structure
-    const htmlContent = text
-      .split('\n')
-      .map(line => {
-        if (line.trim() === '') return '<br>';
-        if (line.startsWith('##')) {
-          return `<h2>${line.replace(/^##\s*/, '')}</h2>`;
+    const lines = text.split('\n');
+    const htmlLines = [];
+    let inList = false;
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const trimmedLine = line.trim();
+
+      if (trimmedLine === '') {
+        if (inList) {
+          htmlLines.push('</ul>');
+          inList = false;
         }
-        if (line.startsWith('#')) {
-          return `<h1>${line.replace(/^#\s*/, '')}</h1>`;
+        htmlLines.push('<br>');
+        continue;
+      }
+
+      const isListItem = trimmedLine.startsWith('-') || trimmedLine.startsWith('*');
+
+      if (isListItem) {
+        if (!inList) {
+          htmlLines.push('<ul>');
+          inList = true;
         }
-        if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-          return `<li>${line.replace(/^[\s-*]+/, '')}</li>`;
+        const content = this.escapeHtml(line.replace(/^[\s-*]+/, ''));
+        htmlLines.push(`<li>${content}</li>`);
+      } else {
+        if (inList) {
+          htmlLines.push('</ul>');
+          inList = false;
         }
-        return `<p>${line}</p>`;
-      })
-      .join('\n');
+
+        if (trimmedLine.startsWith('##')) {
+          const content = this.escapeHtml(line.replace(/^##\s*/, ''));
+          htmlLines.push(`<h2>${content}</h2>`);
+        } else if (trimmedLine.startsWith('#')) {
+          const content = this.escapeHtml(line.replace(/^#\s*/, ''));
+          htmlLines.push(`<h1>${content}</h1>`);
+        } else {
+          const content = this.escapeHtml(line);
+          htmlLines.push(`<p>${content}</p>`);
+        }
+      }
+    }
+
+    // Close any open list
+    if (inList) {
+      htmlLines.push('</ul>');
+    }
+
+    const htmlContent = htmlLines.join('\n');
 
     return `
 <!DOCTYPE html>
@@ -107,7 +157,8 @@ class EmailService {
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     h1, h2 { color: #2c3e50; }
     p { margin: 10px 0; }
-    li { margin-left: 20px; }
+    ul { margin: 10px 0; padding-left: 20px; }
+    li { margin: 5px 0; }
   </style>
 </head>
 <body>
