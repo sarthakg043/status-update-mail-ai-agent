@@ -1,0 +1,25 @@
+{
+  "name": "status-update-mail-ai-agent",
+  "version": "1.0.0",
+  "description": "AI Agent to fetch GitHub PR information and send status update emails",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "keywords": [
+    "ai",
+    "github",
+    "email",
+    "automation",
+    "status-update"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "@octokit/rest": "^21.0.2",
+    "dotenv": "^16.4.5",
+    "nodemailer": "^8.0.1"
+  }
+}
