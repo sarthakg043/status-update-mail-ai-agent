@@ -28,7 +28,9 @@ function loadConfig() {
       endDate: process.env.END_DATE
     },
     userInstructions: process.env.USER_INSTRUCTIONS || 
-      'Please draft a professional status update email summarizing my pull requests.'
+      'Please draft a professional status update email summarizing my pull requests.',
+    includeCode: process.env.INCLUDE_CODE !== 'false', // Default to true, set to 'false' to disable
+    maxCharsPerFile: parseInt(process.env.MAX_CHARS_PER_FILE) || 500 // Maximum characters per file in PR code snippets
   };
 
   // Validate required fields

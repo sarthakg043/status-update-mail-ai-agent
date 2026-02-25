@@ -21,14 +21,14 @@ async function main() {
 
     // Initialize services
     console.log('Initializing services...');
-    const githubService = new GitHubService(config.github.token, config.github.username, config.github.repos);
+    const githubService = new GitHubService(config.github.token, config.github.username, config.github.repos, config.maxCharsPerFile);
     const aiService = new AIService(config.ai.apiKey, config.ai.model);
     const emailService = new EmailService(config.email);
     console.log('Services initialized\n');
 
     // Fetch pull requests
     console.log('Fetching pull requests from GitHub...');
-    const pullRequests = await githubService.fetchPullRequests(startDate, endDate);
+    const pullRequests = await githubService.fetchPullRequests(startDate, endDate, config.includeCode);
     console.log(`Retrieved ${pullRequests.length} pull request(s)\n`);
 
     if (pullRequests.length === 0) {

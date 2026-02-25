@@ -1,12 +1,53 @@
 const { Octokit } = require('@octokit/rest');
 
 class GitHubService {
-  constructor(token, username, repos = []) {
+  constructor(token, username, repos = [], maxCharsPerFile = 500) {
     this.octokit = new Octokit({
       auth: token
     });
     this.username = username;
     this.repos = repos;
+    this.maxCharsPerFile = maxCharsPerFile;
+  }
+
+  /**
+   * Fetch files changed in a PR with code snippets
+   * @param {string} owner - Repository owner
+   * @param {string} repo - Repository name
+   * @param {number} prNumber - Pull request number
+   * @returns {Promise<Array>} Array of file change objects
+   */
+  async fetchPRFiles(owner, repo, prNumber) {
+    try {
+      const response = await this.octokit.rest.pulls.listFiles({
+        owner,
+        repo,
+        pull_number: prNumber,
+        per_page: 10 // Limit to first 10 files to avoid overwhelming the AI
+      });
+
+      return response.data.map(file => {
+        let codeSnippet = '';
+        if (file.patch) {
+          // Truncate patch to configured maxCharsPerFile
+          codeSnippet = file.patch.length > this.maxCharsPerFile 
+            ? file.patch.substring(0, this.maxCharsPerFile) + '...'
+            : file.patch;
+        }
+
+        return {
+          filename: file.filename,
+          status: file.status, // 'added', 'modified', 'removed', etc.
+          additions: file.additions,
+          deletions: file.deletions,
+          changes: file.changes,
+          patch: codeSnippet
+        };
+      });
+    } catch (error) {
+      console.warn(`Could not fetch files for PR #${prNumber}: ${error.message}`);
+      return [];
+    }
   }
 
   /**
@@ -15,14 +56,29 @@ class GitHubService {
    * otherwise falls back to the search API.
    * @param {Date} startDate - Start date for PR search
    * @param {Date} endDate - End date for PR search
+   * @param {boolean} includeCode - Whether to fetch code changes (default: true)
    * @returns {Promise<Array>} Array of PR objects
    */
-  async fetchPullRequests(startDate, endDate) {
+  async fetchPullRequests(startDate, endDate, includeCode = true) {
     try {
+      let pullRequests;
       if (this.repos.length > 0) {
-        return await this.fetchFromRepos(startDate, endDate);
+        pullRequests = await this.fetchFromRepos(startDate, endDate);
+      } else {
+        pullRequests = await this.fetchFromSearch(startDate, endDate);
       }
-      return await this.fetchFromSearch(startDate, endDate);
+
+      // Fetch code changes for each PR if requested
+      if (includeCode) {
+        console.log(`Fetching code changes for PRs (max ${this.maxCharsPerFile} chars per file)...`);
+        for (const pr of pullRequests) {
+          const [owner, repo] = pr.repository.split('/');
+          const prNumber = pr.url.split('/').pop();
+          pr.files = await this.fetchPRFiles(owner, repo, parseInt(prNumber));
+        }
+      }
+
+      return pullRequests;
     } catch (error) {
       console.error('Error fetching pull requests:', error.message);
       throw error;
@@ -76,7 +132,8 @@ class GitHubService {
               updatedAt: pr.updated_at,
               body: pr.body || 'No description provided',
               labels: pr.labels.map(label => label.name),
-              draft: pr.draft || false
+              draft: pr.draft || false,
+              number: pr.number
             });
           }
         }
@@ -122,7 +179,8 @@ class GitHubService {
       updatedAt: pr.updated_at,
       body: pr.body || 'No description provided',
       labels: pr.labels.map(label => label.name),
-      draft: pr.draft || false
+      draft: pr.draft || false,
+      number: pr.number
     }));
 
     console.log(`Found ${pullRequests.length} pull request(s)`);
