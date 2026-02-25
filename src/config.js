@@ -13,7 +13,8 @@ function loadConfig() {
         : []
     },
     ai: {
-      apiKey: process.env.GEMINI_API_KEY
+      apiKey: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL || 'gemini-2.0-flash'
     },
     email: {
       service: process.env.EMAIL_SERVICE || 'gmail',

@@ -1,9 +1,12 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { OpenAI } = require('openai');
 
 class AIService {
-  constructor(apiKey) {
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro' });
+  constructor(apiKey, model) {
+    this.client = new OpenAI({
+      apiKey: apiKey,
+      baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
+    });
+    this.model = model || 'gemini-2.0-flash';
   }
 
   /**
@@ -47,9 +50,11 @@ Do not include subject line or greeting/signature - just the main body content.
 Format the email in a clean, readable manner.
       `.trim();
 
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
-      const emailContent = response.text();
+      const result = await this.client.chat.completions.create({
+        model: this.model,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const emailContent = result.choices[0].message.content;
 
       console.log('Email content generated successfully');
       return emailContent;
