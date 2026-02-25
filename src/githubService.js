@@ -48,36 +48,40 @@ class GitHubService {
 
       console.log(`  Checking ${repoFullName}...`);
 
-      // Fetch both open and closed PRs to cover all states
-      for (const state of ['open', 'closed']) {
-        const response = await this.octokit.rest.pulls.list({
-          owner,
-          repo,
-          state,
-          sort: 'created',
-          direction: 'desc',
-          per_page: 100
-        });
-
-        const filtered = response.data.filter(pr => {
-          const isAuthor = pr.user.login.toLowerCase() === this.username.toLowerCase();
-          const createdAt = new Date(pr.created_at);
-          return isAuthor && createdAt >= startDate && createdAt <= endDate;
-        });
-
-        for (const pr of filtered) {
-          allPullRequests.push({
-            title: pr.title,
-            url: pr.html_url,
-            state: pr.state,
-            repository: `${owner}/${repo}`,
-            createdAt: pr.created_at,
-            updatedAt: pr.updated_at,
-            body: pr.body || 'No description provided',
-            labels: pr.labels.map(label => label.name),
-            draft: pr.draft || false
+      try {
+        // Fetch both open and closed PRs to cover all states
+        for (const state of ['open', 'closed']) {
+          const response = await this.octokit.rest.pulls.list({
+            owner,
+            repo,
+            state,
+            sort: 'created',
+            direction: 'desc',
+            per_page: 100
           });
+
+          const filtered = response.data.filter(pr => {
+            const isAuthor = pr.user.login.toLowerCase() === this.username.toLowerCase();
+            const createdAt = new Date(pr.created_at);
+            return isAuthor && createdAt >= startDate && createdAt <= endDate;
+          });
+
+          for (const pr of filtered) {
+            allPullRequests.push({
+              title: pr.title,
+              url: pr.html_url,
+              state: pr.state,
+              repository: `${owner}/${repo}`,
+              createdAt: pr.created_at,
+              updatedAt: pr.updated_at,
+              body: pr.body || 'No description provided',
+              labels: pr.labels.map(label => label.name),
+              draft: pr.draft || false
+            });
+          }
         }
+      } catch (error) {
+        console.warn(`  Warning: Could not fetch PRs from ${repoFullName}: ${error.message}. Skipping...`);
       }
     }
 
