@@ -7,7 +7,10 @@ function loadConfig() {
   const config = {
     github: {
       token: process.env.GITHUB_TOKEN,
-      username: process.env.GITHUB_USERNAME
+      username: process.env.GITHUB_USERNAME,
+      repos: process.env.GITHUB_REPOS
+        ? process.env.GITHUB_REPOS.split(',').map(r => r.trim()).filter(Boolean)
+        : []
     },
     ai: {
       apiKey: process.env.GEMINI_API_KEY

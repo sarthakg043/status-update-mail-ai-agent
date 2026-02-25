@@ -21,7 +21,7 @@ async function main() {
 
     // Initialize services
     console.log('Initializing services...');
-    const githubService = new GitHubService(config.github.token, config.github.username);
+    const githubService = new GitHubService(config.github.token, config.github.username, config.github.repos);
     const aiService = new AIService(config.ai.apiKey);
     const emailService = new EmailService(config.email);
     console.log('Services initialized\n');

@@ -58,6 +58,17 @@ curl -H "Authorization: token YOUR_TOKEN" https://api.github.com/user
 - The dates are in the future
 - You're using the wrong username
 
+**Private repo PRs not showing up?**
+
+The GitHub Search API does not return results from private repositories you have access to but don't own. To fix this:
+
+1. **Set `GITHUB_REPOS`** in your `.env` file to list the repos you want to search:
+```env
+GITHUB_REPOS=org-name/private-repo,your-username/another-repo
+```
+
+2. **Use a classic personal access token** with the `repo` scope instead of a fine-grained token, or ensure your fine-grained token has access to the target organization's repositories (not just repos owned by you).
+
 **Solutions**:
 1. Check your GitHub profile for recent PRs
 2. Verify date range format: `YYYY-MM-DD`
