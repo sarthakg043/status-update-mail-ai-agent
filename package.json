@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "db:test": "node src/database/testConnection.js",
+    "db:seed": "node src/database/seedDatabase.js",
+    "db:seed:clear": "node src/database/seedDatabase.js --clear"
   },
   "keywords": [
     "ai",
