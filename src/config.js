@@ -23,6 +23,13 @@ function loadConfig() {
       to: process.env.EMAIL_TO,
       subject: process.env.EMAIL_SUBJECT || 'Status Update'
     },
+    database: {
+      enabled: process.env.DATABASE_ENABLED === 'true',
+      username: process.env.MONGODB_USERNAME,
+      password: process.env.MONGODB_PASSWORD,
+      host: process.env.MONGODB_HOST || 'status-update-ai-main.0mr0frx.mongodb.net',
+      database: process.env.MONGODB_DATABASE || 'status-updates'
+    },
     dateRange: {
       startDate: process.env.START_DATE,
       endDate: process.env.END_DATE
@@ -42,6 +49,14 @@ function loadConfig() {
     { key: 'email.appPassword', value: config.email.appPassword, name: 'EMAIL_APP_PASSWORD' },
     { key: 'email.to', value: config.email.to, name: 'EMAIL_TO' }
   ];
+
+  // Validate database fields if database is enabled
+  if (config.database.enabled) {
+    requiredFields.push(
+      { key: 'database.username', value: config.database.username, name: 'MONGODB_USERNAME' },
+      { key: 'database.password', value: config.database.password, name: 'MONGODB_PASSWORD' }
+    );
+  }
 
   const missingFields = requiredFields.filter(field => !field.value);
   
