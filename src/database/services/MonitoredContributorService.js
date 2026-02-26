@@ -41,7 +41,7 @@ class MonitoredContributorService extends BaseService {
       fetchConfig: fetchConfig || { windowType: 'since_last_run', dateRange: null },
       emailConfig: emailConfig || { recipients: [] },
       contributorNote: null,
-      addedBy: addedBy ? this._toObjectId(addedBy) : null,
+      addedBy: addedBy || null,
     });
   }
 

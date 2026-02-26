@@ -41,7 +41,7 @@ function createApp() {
   // JSON body parser for everything else
   app.use(express.json());
 
-  // Clerk session middleware (populates req.auth when a valid token is present)
+  // Clerk session middleware (populates req.auth() when a valid token is present)
   app.use(clerkSession);
 
   /* ── Health check ──────────────────────────────────────────────────── */

@@ -5,6 +5,7 @@
 
 const { COLLECTIONS } = require('../collections');
 const { BaseService } = require('./BaseService');
+const { Int32 } = require('mongodb');
 
 class RepositoryService extends BaseService {
   constructor() {
@@ -15,13 +16,13 @@ class RepositoryService extends BaseService {
   async onboardRepo({ companyId, githubRepoId, owner, name, fullName, isPrivate, encryptedAccessToken, tokenAddedBy }) {
     return this.create({
       companyId: this._toObjectId(companyId),
-      githubRepoId,
+      githubRepoId: new Int32(githubRepoId),
       owner,
       name,
       fullName,
       isPrivate,
       encryptedAccessToken,
-      tokenAddedBy: tokenAddedBy ? this._toObjectId(tokenAddedBy) : null,
+      tokenAddedBy: tokenAddedBy || null,
       status: 'active',
       lastSyncedAt: null,
     });
@@ -43,7 +44,7 @@ class RepositoryService extends BaseService {
   async updateToken(repoId, encryptedAccessToken, tokenAddedBy) {
     return this.updateById(repoId, {
       encryptedAccessToken,
-      tokenAddedBy: this._toObjectId(tokenAddedBy),
+      tokenAddedBy: tokenAddedBy || null,
       status: 'active',
     });
   }

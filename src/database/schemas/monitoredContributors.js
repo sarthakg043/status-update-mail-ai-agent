@@ -71,7 +71,7 @@ const monitoredContributorsValidator = {
         },
       },
       contributorNote: { bsonType: ['string', 'null'], maxLength: 5000 },
-      addedBy: { bsonType: ['objectId', 'null'] },
+      addedBy: { bsonType: ['string', 'null'] },
       createdAt: { bsonType: 'date' },
       updatedAt: { bsonType: 'date' },
     },

@@ -15,7 +15,7 @@ const repositoriesValidator = {
       fullName: { bsonType: 'string' },
       isPrivate: { bsonType: 'bool' },
       encryptedAccessToken: { bsonType: 'string' },
-      tokenAddedBy: { bsonType: ['objectId', 'null'] },
+      tokenAddedBy: { bsonType: ['string', 'null'] },
       status: { bsonType: 'string', enum: ['active', 'revoked', 'token_error', 'paused'] },
       lastSyncedAt: { bsonType: ['date', 'null'] },
       createdAt: { bsonType: 'date' },

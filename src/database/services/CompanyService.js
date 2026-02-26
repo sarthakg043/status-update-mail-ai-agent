@@ -5,6 +5,7 @@
 
 const { COLLECTIONS } = require('../collections');
 const { BaseService } = require('./BaseService');
+const { Int32 } = require('mongodb');
 
 class CompanyService extends BaseService {
   constructor() {
@@ -18,6 +19,7 @@ class CompanyService extends BaseService {
 
   /** Create a new company with sensible defaults. */
   async createCompany({ clerkOrgId, name, email, logoUrl = null, planName = 'free', limits, settings }) {
+    const safeLimits = limits || { maxRepos: 1, maxContributors: 5, maxEmailsPerMonth: 50 };
     return this.create({
       clerkOrgId,
       name,
@@ -30,8 +32,17 @@ class CompanyService extends BaseService {
         stripeSubscriptionId: null,
         currentPeriodStart: new Date(),
         currentPeriodEnd: null,
-        limits: limits || { maxRepos: 1, maxContributors: 5, maxEmailsPerMonth: 50 },
-        usage: { reposCount: 0, contributorsCount: 0, emailsSentThisMonth: 0, usagePeriodStart: new Date() },
+        limits: {
+          maxRepos: new Int32(safeLimits.maxRepos),
+          maxContributors: new Int32(safeLimits.maxContributors),
+          maxEmailsPerMonth: new Int32(safeLimits.maxEmailsPerMonth),
+        },
+        usage: {
+          reposCount: new Int32(0),
+          contributorsCount: new Int32(0),
+          emailsSentThisMonth: new Int32(0),
+          usagePeriodStart: new Date(),
+        },
       },
       settings: settings || { defaultMonitoringType: 'ghost', timezone: 'UTC' },
     });

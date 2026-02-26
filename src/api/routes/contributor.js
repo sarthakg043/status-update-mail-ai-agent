@@ -34,7 +34,7 @@ router.post(
   '/onboard',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     const contributorId = req.headers['x-contributor-id'];
     const { name, personalEmail } = req.body;
 

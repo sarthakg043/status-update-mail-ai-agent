@@ -37,7 +37,7 @@ async function requireCompany(req, _res, next) {
       throw new AppError('MISSING_COMPANY', 'x-company-id header is required.', 400);
     }
 
-    const clerkUserId = req.auth?.userId;
+    const clerkUserId = req.auth()?.userId;
     if (!clerkUserId) {
       throw new AppError('UNAUTHORIZED', 'Authentication required.', 401);
     }
@@ -66,7 +66,7 @@ async function requireContributor(req, _res, next) {
       throw new AppError('MISSING_CONTRIBUTOR', 'x-contributor-id header is required.', 400);
     }
 
-    const clerkUserId = req.auth?.userId;
+    const clerkUserId = req.auth()?.userId;
     if (!clerkUserId) {
       throw new AppError('UNAUTHORIZED', 'Authentication required.', 401);
     }

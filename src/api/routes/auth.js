@@ -52,7 +52,7 @@ router.post(
     });
 
     // Create the admin member
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
     await companyMemberService.addMember({
       companyId: company._id.toString(),
       clerkUserId,
@@ -80,7 +80,7 @@ router.get(
   '/me',
   requireAuth,
   asyncHandler(async (req, res) => {
-    const clerkUserId = req.auth.userId;
+    const clerkUserId = req.auth().userId;
 
     // Try company member first
     const member = await companyMemberService.findByClerkUserId(clerkUserId);

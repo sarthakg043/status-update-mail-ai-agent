@@ -17,7 +17,7 @@ const companiesValidator = {
         required: ['planName', 'status'],
         properties: {
           planId: { bsonType: 'objectId', description: 'Reference to plans collection' },
-          planName: { bsonType: 'string', enum: ['free', 'starter', 'pro', 'enterprise'] },
+          planName: { bsonType: 'string', enum: ['free', 'free_trial', 'starter', 'pro', 'enterprise'] },
           status: { bsonType: 'string', enum: ['active', 'past_due', 'canceled', 'trialing'] },
           stripeCustomerId: { bsonType: ['string', 'null'] },
           stripeSubscriptionId: { bsonType: ['string', 'null'] },

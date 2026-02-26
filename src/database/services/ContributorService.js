@@ -5,6 +5,7 @@
 
 const { COLLECTIONS } = require('../collections');
 const { BaseService } = require('./BaseService');
+const { Int32 } = require('mongodb');
 
 class ContributorService extends BaseService {
   constructor() {
@@ -13,12 +14,12 @@ class ContributorService extends BaseService {
 
   /** Find or create a contributor by GitHub user ID. */
   async findOrCreate({ githubUsername, githubUserId, githubProfileUrl = null, avatarUrl = null }) {
-    const existing = await this.findOne({ githubUserId });
+    const existing = await this.findOne({ githubUserId: new Int32(githubUserId) });
     if (existing) return existing;
 
     return this.create({
       githubUsername,
-      githubUserId,
+      githubUserId: new Int32(githubUserId),
       githubProfileUrl,
       avatarUrl,
       discoveredEmails: [],

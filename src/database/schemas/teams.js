@@ -11,7 +11,7 @@ const teamsValidator = {
       companyId: { bsonType: 'objectId' },
       name: { bsonType: 'string' },
       description: { bsonType: ['string', 'null'] },
-      createdBy: { bsonType: 'objectId' },
+      createdBy: { bsonType: 'string' },
       memberContributorIds: {
         bsonType: 'array',
         items: { bsonType: 'objectId' },

@@ -17,7 +17,7 @@ class TeamService extends BaseService {
       companyId: this._toObjectId(companyId),
       name,
       description,
-      createdBy: this._toObjectId(createdBy),
+      createdBy,
       memberContributorIds: memberContributorIds.map((id) => this._toObjectId(id)),
     });
   }
