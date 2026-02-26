@@ -6,7 +6,7 @@ class AIService {
       apiKey: apiKey,
       baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
     });
-    this.model = model || 'gemini-2.0-flash';
+    this.model = model || 'gemini-2.5-flash';
     this.maxRetries = maxRetries;
     this.lastRequestTime = 0; // Track last API call for throttling
     this.minRequestInterval = 2000; // Minimum 2 seconds between requests
