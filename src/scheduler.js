@@ -165,6 +165,9 @@ async function executeRun(mc) {
         await emailService.sendEmail(recipients.join(','), subject, aiSummary);
         emailStatus = { status: 'sent', sentAt: new Date(), recipients, failureReason: null };
         console.log(`${runLabel}: email sent to ${recipients.join(', ')}`);
+
+        // Increment email usage counter
+        await companyService.incrementUsage(mc.companyId.toString(), 'emailsSentThisMonth');
       } catch (err) {
         emailStatus = { status: 'failed', sentAt: null, recipients, failureReason: err.message };
         console.warn(`${runLabel}: email send error – ${err.message}`);

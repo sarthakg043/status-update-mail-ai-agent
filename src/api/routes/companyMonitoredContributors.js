@@ -19,6 +19,7 @@ const { ContributorService } = require('../../database/services/ContributorServi
 const { RepositoryService } = require('../../database/services/RepositoryService');
 const { SummaryRunService } = require('../../database/services/SummaryRunService');
 const { InviteService } = require('../../database/services/InviteService');
+const { CompanyService } = require('../../database/services/CompanyService');
 
 const { calculateNextRunAt } = require('../utils/scheduleUtils');
 
@@ -27,6 +28,7 @@ const contributorService = new ContributorService();
 const repositoryService = new RepositoryService();
 const summaryRunService = new SummaryRunService();
 const inviteService = new InviteService();
+const companyService = new CompanyService();
 
 const router = Router();
 router.use(requireAuth, requireCompany);
@@ -113,6 +115,10 @@ router.post(
 
     // If open monitoring with invite email, create an invite
     let inviteStatus = null;
+
+    // Increment usage counter for monitored contributors
+    await companyService.incrementUsage(req.companyId, 'contributorsCount');
+
     if (monitoringType === 'open' && inviteEmail) {
       await inviteService.createInvite({
         monitoredContributorId: mc._id.toString(),
@@ -271,6 +277,9 @@ router.delete(
     }
 
     await monitoredContributorService.remove(req.params.id);
+
+    // Decrement usage counter
+    await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
 
     res.json({
       success: true,

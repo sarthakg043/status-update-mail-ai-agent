@@ -13,9 +13,11 @@ const { Octokit } = require('@octokit/rest');
 const { asyncHandler, AppError, requireAuth, requireCompany, requireRole } = require('../middleware');
 const { RepositoryService } = require('../../database/services/RepositoryService');
 const { MonitoredContributorService } = require('../../database/services/MonitoredContributorService');
+const { CompanyService } = require('../../database/services/CompanyService');
 
 const repositoryService = new RepositoryService();
 const monitoredContributorService = new MonitoredContributorService();
+const companyService = new CompanyService();
 const router = Router();
 
 router.use(requireAuth, requireCompany);
@@ -62,6 +64,9 @@ router.post(
       encryptedAccessToken: accessToken, // In production, encrypt before storing
       tokenAddedBy: req.companyMember.clerkUserId,
     });
+
+    // Increment usage counter
+    await companyService.incrementUsage(req.companyId, 'reposCount');
 
     res.status(201).json({
       success: true,
@@ -159,6 +164,12 @@ router.delete(
 
     // Soft-delete the repo
     await repositoryService.setStatus(req.params.repoId, 'removed');
+
+    // Decrement usage counters
+    await companyService.incrementUsage(req.companyId, 'reposCount', -1);
+    if (pausedCount > 0) {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -pausedCount);
+    }
 
     res.json({
       success: true,
