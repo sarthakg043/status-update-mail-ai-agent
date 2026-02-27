@@ -32,6 +32,22 @@ router.post(
       throw new AppError('VALIDATION', 'accessToken, owner, and repoName are required.', 400);
     }
 
+    // ── Plan-limit guard: check repo quota before proceeding ──
+    const company = await companyService.findById(req.companyId);
+    if (!company) {
+      throw new AppError('NOT_FOUND', 'Company not found.', 404);
+    }
+    const { limits = {}, usage = {} } = company.subscription || {};
+    const maxRepos = limits.maxRepos ?? 1;
+    const currentRepos = usage.reposCount ?? 0;
+    if (currentRepos >= maxRepos) {
+      throw new AppError(
+        'PLAN_LIMIT',
+        `Repository limit reached. Your plan allows a maximum of ${maxRepos} repo(s). Please upgrade your plan to add more repositories.`,
+        403,
+      );
+    }
+
     // Validate token against GitHub
     const octokit = new Octokit({ auth: accessToken });
     let ghRepo;

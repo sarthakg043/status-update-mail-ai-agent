@@ -52,6 +52,22 @@ router.post(
       throw new AppError('VALIDATION', 'githubUsername and repositoryId are required.', 400);
     }
 
+    // ── Plan-limit guard: check contributor quota before proceeding ──
+    const company = await companyService.findById(req.companyId);
+    if (!company) {
+      throw new AppError('NOT_FOUND', 'Company not found.', 404);
+    }
+    const { limits = {}, usage = {} } = company.subscription || {};
+    const maxContributors = limits.maxContributors ?? 5;
+    const currentContributors = usage.contributorsCount ?? 0;
+    if (currentContributors >= maxContributors) {
+      throw new AppError(
+        'PLAN_LIMIT',
+        `Contributor limit reached. Your plan allows a maximum of ${maxContributors} monitored contributor(s). Please upgrade your plan to add more.`,
+        403,
+      );
+    }
+
     // Validate repo belongs to company
     const repo = await repositoryService.findById(repositoryId);
     if (!repo || repo.companyId.toString() !== req.companyId) {
@@ -252,6 +268,21 @@ router.patch(
       await monitoredContributorService.pause(req.params.id);
       await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
     } else if (status === 'active' && prevStatus !== 'active') {
+      // ── Plan-limit guard: check contributor quota before reactivating ──
+      const companyForResume = await companyService.findById(req.companyId);
+      if (companyForResume) {
+        const resumeLimits = companyForResume.subscription?.limits || {};
+        const resumeUsage = companyForResume.subscription?.usage || {};
+        const maxC = resumeLimits.maxContributors ?? 5;
+        const curC = resumeUsage.contributorsCount ?? 0;
+        if (curC >= maxC) {
+          throw new AppError(
+            'PLAN_LIMIT',
+            `Contributor limit reached. Your plan allows a maximum of ${maxC} monitored contributor(s). Please upgrade your plan to add more.`,
+            403,
+          );
+        }
+      }
       await monitoredContributorService.resume(req.params.id);
       await companyService.incrementUsage(req.companyId, 'contributorsCount');
     } else if (status === 'paused') {

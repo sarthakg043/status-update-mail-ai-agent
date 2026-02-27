@@ -154,24 +154,48 @@ async function executeRun(mc) {
     console.log(`${runLabel}: [debug] EMAIL_USER=${process.env.EMAIL_USER}, EMAIL_SERVICE=${process.env.EMAIL_SERVICE || 'gmail'}`);
 
     if (hasActivity && aiSummary && recipients.length > 0) {
+      // ── Plan-limit guard: check email quota before sending ──
+      let emailLimitReached = false;
       try {
-        const emailService = new EmailService({
-          service: process.env.EMAIL_SERVICE || 'gmail',
-          user: process.env.EMAIL_USER,
-          appPassword: process.env.EMAIL_APP_PASSWORD,
-        });
-        const subject = `Status Update: ${mc.githubUsername} – ${mc.repoFullName}`;
-        console.log(`${runLabel}: [debug] Sending email – from=${process.env.EMAIL_USER}, to=${recipients.join(', ')}, subject="${subject}"`);
-        await emailService.sendEmail(recipients.join(','), subject, aiSummary);
-        emailStatus = { status: 'sent', sentAt: new Date(), recipients, failureReason: null };
-        console.log(`${runLabel}: email sent to ${recipients.join(', ')}`);
+        const companyDoc = await companyService.findById(mc.companyId.toString());
+        if (companyDoc) {
+          const maxEmails = companyDoc.subscription?.limits?.maxEmailsPerMonth ?? 50;
+          const sentEmails = companyDoc.subscription?.usage?.emailsSentThisMonth ?? 0;
+          if (sentEmails >= maxEmails) {
+            emailLimitReached = true;
+            emailStatus = {
+              status: 'skipped',
+              sentAt: null,
+              recipients,
+              failureReason: `Monthly email limit reached (${maxEmails}). Upgrade your plan to send more.`,
+            };
+            console.log(`${runLabel}: email skipped – monthly limit reached (${sentEmails}/${maxEmails})`);
+          }
+        }
+      } catch (limitErr) {
+        console.warn(`${runLabel}: could not check email limit – ${limitErr.message}`);
+      }
 
-        // Increment email usage counter
-        await companyService.incrementUsage(mc.companyId.toString(), 'emailsSentThisMonth');
-      } catch (err) {
-        emailStatus = { status: 'failed', sentAt: null, recipients, failureReason: err.message };
-        console.warn(`${runLabel}: email send error – ${err.message}`);
-        console.warn(`${runLabel}: [debug] email error stack: ${err.stack}`);
+      if (!emailLimitReached) {
+        try {
+          const emailService = new EmailService({
+            service: process.env.EMAIL_SERVICE || 'gmail',
+            user: process.env.EMAIL_USER,
+            appPassword: process.env.EMAIL_APP_PASSWORD,
+          });
+          const subject = `Status Update: ${mc.githubUsername} – ${mc.repoFullName}`;
+          console.log(`${runLabel}: [debug] Sending email – from=${process.env.EMAIL_USER}, to=${recipients.join(', ')}, subject="${subject}"`);
+          await emailService.sendEmail(recipients.join(','), subject, aiSummary);
+          emailStatus = { status: 'sent', sentAt: new Date(), recipients, failureReason: null };
+          console.log(`${runLabel}: email sent to ${recipients.join(', ')}`);
+
+          // Increment email usage counter
+          await companyService.incrementUsage(mc.companyId.toString(), 'emailsSentThisMonth');
+        } catch (err) {
+          emailStatus = { status: 'failed', sentAt: null, recipients, failureReason: err.message };
+          console.warn(`${runLabel}: email send error – ${err.message}`);
+          console.warn(`${runLabel}: [debug] email error stack: ${err.stack}`);
+        }
       }
     } else {
       const reason = !hasActivity
