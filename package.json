@@ -5,7 +5,12 @@
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "dev": "node --watch src/index.js",
+    "server": "node src/server.js",
+    "server:dev": "node --watch src/server.js",
+    "db:test": "node src/database/testConnection.js",
+    "db:seed": "node src/database/seedDatabase.js",
+    "db:seed:clear": "node src/database/seedDatabase.js --clear"
   },
   "keywords": [
     "ai",
@@ -17,10 +22,16 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@clerk/express": "^1.7.74",
     "@octokit/rest": "^21.0.2",
+    "cors": "^2.8.6",
     "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "helmet": "^8.1.0",
     "mongodb": "^7.1.0",
     "nodemailer": "^8.0.1",
-    "openai": "^6.25.0"
+    "openai": "^6.25.0",
+    "stripe": "^20.4.0",
+    "svix": "^1.86.0"
   }
 }

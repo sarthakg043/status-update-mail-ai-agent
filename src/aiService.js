@@ -93,8 +93,8 @@ PR ${index + 1}:
 - Status: ${pr.state} ${pr.draft ? '(Draft)' : ''}
 - Created: ${new Date(pr.createdAt).toLocaleDateString()}
 - URL: ${pr.url}
-- Description: ${pr.body.substring(0, 200)}${pr.body.length > 200 ? '...' : ''}
-- Labels: ${pr.labels.join(', ') || 'None'}`;
+- Description: ${(pr.body || pr.description || 'No description').substring(0, 200)}${(pr.body || pr.description || '').length > 200 ? '...' : ''}
+- Labels: ${(pr.labels || []).join(', ') || 'None'}`;
 
         // Add code changes if available
         if (pr.files && pr.files.length > 0) {
