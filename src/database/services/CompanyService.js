@@ -61,10 +61,23 @@ class CompanyService extends BaseService {
     });
   }
 
-  /** Increment a usage counter atomically. */
+  /** Increment a usage counter atomically (floor-clamped at 0). */
   async incrementUsage(companyId, field, amount = 1) {
     const coll = await this._collection();
     const updateKey = `subscription.usage.${field}`;
+
+    if (amount < 0) {
+      // Two-step: decrement then clamp to 0 using $max
+      await coll.updateOne(
+        { _id: this._toObjectId(companyId) },
+        { $inc: { [updateKey]: amount }, $set: { updatedAt: new Date() } },
+      );
+      return coll.updateOne(
+        { _id: this._toObjectId(companyId), [updateKey]: { $lt: 0 } },
+        { $set: { [updateKey]: 0, updatedAt: new Date() } },
+      );
+    }
+
     return coll.updateOne(
       { _id: this._toObjectId(companyId) },
       { $inc: { [updateKey]: amount }, $set: { updatedAt: new Date() } },

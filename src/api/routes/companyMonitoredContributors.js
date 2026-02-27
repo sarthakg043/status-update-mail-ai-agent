@@ -116,8 +116,10 @@ router.post(
     // If open monitoring with invite email, create an invite
     let inviteStatus = null;
 
-    // Increment usage counter for monitored contributors
-    await companyService.incrementUsage(req.companyId, 'contributorsCount');
+    // Increment usage counter only for genuinely new or reactivated-from-removed contributors
+    if (!existing || existing.status === 'removed') {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount');
+    }
 
     if (monitoringType === 'open' && inviteEmail) {
       await inviteService.createInvite({
@@ -244,9 +246,19 @@ router.patch(
       await monitoredContributorService.updateById(req.params.id, updates);
     }
 
-    // Handle status change
-    if (status === 'paused') await monitoredContributorService.pause(req.params.id);
-    if (status === 'active') await monitoredContributorService.resume(req.params.id);
+    // Handle status change with usage tracking
+    const prevStatus = mc.status;
+    if (status === 'paused' && prevStatus === 'active') {
+      await monitoredContributorService.pause(req.params.id);
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
+    } else if (status === 'active' && prevStatus !== 'active') {
+      await monitoredContributorService.resume(req.params.id);
+      await companyService.incrementUsage(req.companyId, 'contributorsCount');
+    } else if (status === 'paused') {
+      await monitoredContributorService.pause(req.params.id);
+    } else if (status === 'active') {
+      await monitoredContributorService.resume(req.params.id);
+    }
 
     // Fetch updated record
     const updated = await monitoredContributorService.findById(req.params.id);
@@ -276,10 +288,14 @@ router.delete(
       throw new AppError('NOT_FOUND', 'Monitored contributor not found.', 404);
     }
 
+    // Only decrement if the contributor was actually counted (not already removed)
+    const wasActive = mc.status !== 'removed';
+
     await monitoredContributorService.remove(req.params.id);
 
-    // Decrement usage counter
-    await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
+    if (wasActive) {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
+    }
 
     res.json({
       success: true,

@@ -48,9 +48,34 @@ router.post(
 
     const fullName = `${owner}/${repoName}`;
 
-    // Check for duplicate
+    // Check for duplicate — reactivate if soft-deleted
     const existing = await repositoryService.findByFullName(req.companyId, fullName);
     if (existing) {
+      if (existing.status === 'removed') {
+        // Reactivate the soft-deleted repo with the new token
+        await repositoryService.updateById(existing._id.toString(), {
+          status: 'active',
+          encryptedAccessToken: accessToken,
+          tokenAddedBy: req.companyMember.clerkUserId,
+          githubRepoId: ghRepo.id,
+          isPrivate: ghRepo.private,
+          lastSyncedAt: null,
+        });
+
+        // Increment usage counter
+        await companyService.incrementUsage(req.companyId, 'reposCount');
+
+        return res.status(201).json({
+          success: true,
+          data: {
+            _id: existing._id.toString(),
+            fullName: existing.fullName,
+            isPrivate: ghRepo.private,
+            status: 'active',
+            createdAt: existing.createdAt,
+          },
+        });
+      }
       throw new AppError('DUPLICATE', `Repository ${fullName} is already onboarded.`, 409);
     }
 
@@ -165,8 +190,10 @@ router.delete(
     // Soft-delete the repo
     await repositoryService.setStatus(req.params.repoId, 'removed');
 
-    // Decrement usage counters
+    // Decrement repo usage counter
     await companyService.incrementUsage(req.companyId, 'reposCount', -1);
+
+    // Decrement contributor usage for each monitor that was actually active (now paused)
     if (pausedCount > 0) {
       await companyService.incrementUsage(req.companyId, 'contributorsCount', -pausedCount);
     }
