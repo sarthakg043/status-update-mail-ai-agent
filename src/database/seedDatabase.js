@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
  * MongoDB Database Seeding Script
- * 
+ *
  * This script populates the database with realistic dummy data for all collections.
  * Run with: node src/database/seedDatabase.js
- * 
+ *
+ * Options:
+ *   --clear, -c   Clear all existing data before seeding
+ *
  * Environment variables required:
  * - MONGODB_USERNAME
  * - MONGODB_PASSWORD
@@ -26,6 +29,7 @@ class DatabaseSeeder {
     this.connection = getMongoConnection();
     this.db = null;
     this.insertedIds = {};
+    this.clerkUserIds = [];
   }
 
   async connect() {
@@ -43,7 +47,7 @@ class DatabaseSeeder {
    */
   async clearAllCollections() {
     console.log('⚠️  Clearing all existing data...\n');
-    
+
     const collections = Object.values(COLLECTIONS);
     for (const collectionName of collections) {
       try {
@@ -56,12 +60,12 @@ class DatabaseSeeder {
     console.log('');
   }
 
-  /**
-   * Seed Plans Collection
-   */
+  /* ================================================================
+   *  PLANS
+   * ================================================================ */
   async seedPlans() {
     console.log('📊 Seeding plans...');
-    
+
     const plans = [
       {
         _id: new ObjectId(),
@@ -130,18 +134,17 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.PLANS).insertMany(plans);
-    this.insertedIds.plans = plans.map(p => p._id);
+    this.insertedIds.plans = plans.map((p) => p._id);
     console.log(`  ✓ Created ${plans.length} plans\n`);
-    
     return plans;
   }
 
-  /**
-   * Seed Companies Collection
-   */
+  /* ================================================================
+   *  COMPANIES
+   * ================================================================ */
   async seedCompanies(plans) {
     console.log('🏢 Seeding companies...');
-    
+
     const companies = [
       {
         _id: new ObjectId(),
@@ -245,18 +248,17 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.COMPANIES).insertMany(companies);
-    this.insertedIds.companies = companies.map(c => c._id);
+    this.insertedIds.companies = companies.map((c) => c._id);
     console.log(`  ✓ Created ${companies.length} companies\n`);
-    
     return companies;
   }
 
-  /**
-   * Seed Company Members Collection
-   */
+  /* ================================================================
+   *  COMPANY MEMBERS
+   * ================================================================ */
   async seedCompanyMembers(companies) {
     console.log('👥 Seeding company members...');
-    
+
     const members = [
       // Acme Corporation members
       {
@@ -330,18 +332,19 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.COMPANY_MEMBERS).insertMany(members);
-    this.insertedIds.companyMembers = members.map(m => m._id);
+    this.insertedIds.companyMembers = members.map((m) => m._id);
+    // Store clerk user IDs for later reference in repos/teams/monitored contributors
+    this.clerkUserIds = members.map((m) => m.clerkUserId);
     console.log(`  ✓ Created ${members.length} company members\n`);
-    
     return members;
   }
 
-  /**
-   * Seed Contributors Collection
-   */
+  /* ================================================================
+   *  CONTRIBUTORS
+   * ================================================================ */
   async seedContributors() {
     console.log('👤 Seeding contributors...');
-    
+
     const contributors = [
       {
         _id: new ObjectId(),
@@ -350,16 +353,8 @@ class DatabaseSeeder {
         githubProfileUrl: 'https://github.com/john-dev',
         avatarUrl: 'https://avatars.githubusercontent.com/u/12345678',
         discoveredEmails: [
-          {
-            email: 'john@example.com',
-            source: 'commit',
-            discoveredAt: new Date('2025-11-15'),
-          },
-          {
-            email: 'john.dev@gmail.com',
-            source: 'github_profile',
-            discoveredAt: new Date('2025-11-20'),
-          },
+          { email: 'john@example.com', source: 'commit', discoveredAt: new Date('2025-11-15') },
+          { email: 'john.dev@gmail.com', source: 'github_profile', discoveredAt: new Date('2025-11-20') },
         ],
         hasAccount: true,
         clerkUserId: 'user_clerk_john_dev_007',
@@ -373,11 +368,7 @@ class DatabaseSeeder {
         githubProfileUrl: 'https://github.com/sarah-codes',
         avatarUrl: 'https://avatars.githubusercontent.com/u/23456789',
         discoveredEmails: [
-          {
-            email: 'sarah@example.com',
-            source: 'commit',
-            discoveredAt: new Date('2025-12-01'),
-          },
+          { email: 'sarah@example.com', source: 'commit', discoveredAt: new Date('2025-12-01') },
         ],
         hasAccount: false,
         clerkUserId: null,
@@ -391,11 +382,7 @@ class DatabaseSeeder {
         githubProfileUrl: 'https://github.com/mike-fullstack',
         avatarUrl: 'https://avatars.githubusercontent.com/u/34567890',
         discoveredEmails: [
-          {
-            email: 'mike@techmail.com',
-            source: 'manual',
-            discoveredAt: new Date('2026-01-05'),
-          },
+          { email: 'mike@techmail.com', source: 'manual', discoveredAt: new Date('2026-01-05') },
         ],
         hasAccount: true,
         clerkUserId: 'user_clerk_mike_fullstack_008',
@@ -409,11 +396,7 @@ class DatabaseSeeder {
         githubProfileUrl: 'https://github.com/emma-opensource',
         avatarUrl: 'https://avatars.githubusercontent.com/u/45678901',
         discoveredEmails: [
-          {
-            email: 'emma@oss.dev',
-            source: 'github_profile',
-            discoveredAt: new Date('2026-01-10'),
-          },
+          { email: 'emma@oss.dev', source: 'github_profile', discoveredAt: new Date('2026-01-10') },
         ],
         hasAccount: false,
         clerkUserId: null,
@@ -427,11 +410,7 @@ class DatabaseSeeder {
         githubProfileUrl: 'https://github.com/alex-backend',
         avatarUrl: 'https://avatars.githubusercontent.com/u/56789012',
         discoveredEmails: [
-          {
-            email: 'alex@backend.io',
-            source: 'commit',
-            discoveredAt: new Date('2026-02-01'),
-          },
+          { email: 'alex@backend.io', source: 'commit', discoveredAt: new Date('2026-02-01') },
         ],
         hasAccount: false,
         clerkUserId: null,
@@ -441,21 +420,20 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.CONTRIBUTORS).insertMany(contributors);
-    this.insertedIds.contributors = contributors.map(c => c._id);
+    this.insertedIds.contributors = contributors.map((c) => c._id);
     console.log(`  ✓ Created ${contributors.length} contributors\n`);
-    
     return contributors;
   }
 
-  /**
-   * Seed Contributor Accounts Collection
-   */
+  /* ================================================================
+   *  CONTRIBUTOR ACCOUNTS
+   * ================================================================ */
   async seedContributorAccounts(contributors) {
     console.log('🔐 Seeding contributor accounts...');
-    
-    // Only create accounts for contributors who have accepted invites (hasAccount: true)
-    const contributorsWithAccounts = contributors.filter(c => c.hasAccount);
-    
+
+    // Only create accounts for contributors with hasAccount: true
+    const contributorsWithAccounts = contributors.filter((c) => c.hasAccount);
+
     const accounts = [
       {
         _id: new ObjectId(),
@@ -498,18 +476,17 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.CONTRIBUTOR_ACCOUNTS).insertMany(accounts);
-    this.insertedIds.contributorAccounts = accounts.map(a => a._id);
+    this.insertedIds.contributorAccounts = accounts.map((a) => a._id);
     console.log(`  ✓ Created ${accounts.length} contributor accounts\n`);
-    
     return accounts;
   }
 
-  /**
-   * Seed Repositories Collection
-   */
+  /* ================================================================
+   *  REPOSITORIES
+   * ================================================================ */
   async seedRepositories(companies) {
     console.log('📦 Seeding repositories...');
-    
+
     const repositories = [
       // Acme Corporation repos
       {
@@ -521,7 +498,7 @@ class DatabaseSeeder {
         fullName: 'acme-corp/web-app',
         isPrivate: true,
         encryptedAccessToken: 'encrypted_token_acme_web_app_xyz789',
-        tokenAddedBy: this.insertedIds.companyMembers[0],
+        tokenAddedBy: this.clerkUserIds[0], // alice's clerk user id (string)
         status: 'active',
         lastSyncedAt: new Date('2026-02-25'),
         createdAt: new Date('2025-12-01'),
@@ -536,7 +513,7 @@ class DatabaseSeeder {
         fullName: 'acme-corp/mobile-app',
         isPrivate: true,
         encryptedAccessToken: 'encrypted_token_acme_mobile_app_abc123',
-        tokenAddedBy: this.insertedIds.companyMembers[0],
+        tokenAddedBy: this.clerkUserIds[0], // alice
         status: 'active',
         lastSyncedAt: new Date('2026-02-24'),
         createdAt: new Date('2025-12-10'),
@@ -551,7 +528,7 @@ class DatabaseSeeder {
         fullName: 'acme-corp/api-backend',
         isPrivate: true,
         encryptedAccessToken: 'encrypted_token_acme_api_backend_def456',
-        tokenAddedBy: this.insertedIds.companyMembers[1],
+        tokenAddedBy: this.clerkUserIds[1], // bob
         status: 'active',
         lastSyncedAt: new Date('2026-02-25'),
         createdAt: new Date('2025-12-05'),
@@ -567,7 +544,7 @@ class DatabaseSeeder {
         fullName: 'tech-innovators/core-service',
         isPrivate: false,
         encryptedAccessToken: 'encrypted_token_tech_core_service_ghi789',
-        tokenAddedBy: this.insertedIds.companyMembers[3],
+        tokenAddedBy: this.clerkUserIds[3], // diana
         status: 'active',
         lastSyncedAt: new Date('2026-02-26'),
         createdAt: new Date('2026-01-15'),
@@ -582,7 +559,7 @@ class DatabaseSeeder {
         fullName: 'tech-innovators/frontend',
         isPrivate: false,
         encryptedAccessToken: 'encrypted_token_tech_frontend_jkl012',
-        tokenAddedBy: this.insertedIds.companyMembers[3],
+        tokenAddedBy: this.clerkUserIds[3], // diana
         status: 'active',
         lastSyncedAt: new Date('2026-02-26'),
         createdAt: new Date('2026-01-20'),
@@ -598,7 +575,7 @@ class DatabaseSeeder {
         fullName: 'startup-labs/mvp-product',
         isPrivate: true,
         encryptedAccessToken: 'encrypted_token_startup_mvp_mno345',
-        tokenAddedBy: this.insertedIds.companyMembers[5],
+        tokenAddedBy: this.clerkUserIds[5], // frank
         status: 'active',
         lastSyncedAt: new Date('2026-02-25'),
         createdAt: new Date('2026-02-20'),
@@ -607,20 +584,19 @@ class DatabaseSeeder {
     ];
 
     await this.db.collection(COLLECTIONS.REPOSITORIES).insertMany(repositories);
-    this.insertedIds.repositories = repositories.map(r => r._id);
+    this.insertedIds.repositories = repositories.map((r) => r._id);
     console.log(`  ✓ Created ${repositories.length} repositories\n`);
-    
     return repositories;
   }
 
-  /**
-   * Seed Monitored Contributors Collection
-   */
+  /* ================================================================
+   *  MONITORED CONTRIBUTORS
+   * ================================================================ */
   async seedMonitoredContributors(companies, contributors, repositories) {
     console.log('👁️  Seeding monitored contributors...');
-    
+
     const monitoredContributors = [
-      // Acme Corp monitoring john-dev in web-app
+      // Acme Corp monitoring john-dev in web-app (open, accepted)
       {
         _id: new ObjectId(),
         companyId: companies[0]._id,
@@ -634,25 +610,30 @@ class DatabaseSeeder {
         inviteEmail: 'john@example.com',
         schedule: {
           type: 'specific_weekdays',
-          config: {
-            weekdays: [1, 3, 5], // Monday, Wednesday, Friday
-          },
+          config: { weekdays: [1, 3, 5] }, // Mon, Wed, Fri
           time: '09:00',
           timezone: 'America/New_York',
           isActive: true,
-          nextRunAt: new Date('2026-02-28T09:00:00'),
-          lastRunAt: new Date('2026-02-26T09:00:00'),
+          nextRunAt: new Date('2026-02-28T14:00:00Z'), // 09:00 ET
+          lastRunAt: new Date('2026-02-26T14:00:00Z'),
         },
         fetchConfig: {
           windowType: 'since_last_run',
           dateRange: null,
         },
-        recipients: ['alice@acme-corp.com', 'bob@acme-corp.com'],
+        emailConfig: {
+          recipients: [
+            { email: 'alice@acme-corp.com', type: 'company_admin' },
+            { email: 'bob@acme-corp.com', type: 'custom' },
+          ],
+        },
         contributorNote: 'Senior frontend developer - focus on React components',
+        addedBy: this.clerkUserIds[0], // alice
         createdAt: new Date('2025-12-01'),
         updatedAt: new Date('2026-02-26'),
       },
-      // Acme Corp monitoring sarah-codes in web-app (ghost mode)
+
+      // Acme Corp monitoring sarah-codes in web-app (ghost)
       {
         _id: new ObjectId(),
         companyId: companies[0]._id,
@@ -670,19 +651,25 @@ class DatabaseSeeder {
           time: '17:00',
           timezone: 'America/New_York',
           isActive: true,
-          nextRunAt: new Date('2026-02-27T17:00:00'),
-          lastRunAt: new Date('2026-02-26T17:00:00'),
+          nextRunAt: new Date('2026-02-27T22:00:00Z'), // 17:00 ET
+          lastRunAt: new Date('2026-02-26T22:00:00Z'),
         },
         fetchConfig: {
           windowType: 'since_last_run',
           dateRange: null,
         },
-        recipients: ['bob@acme-corp.com'],
+        emailConfig: {
+          recipients: [
+            { email: 'bob@acme-corp.com', type: 'custom' },
+          ],
+        },
         contributorNote: 'Contract developer - UI/UX specialist',
+        addedBy: this.clerkUserIds[1], // bob
         createdAt: new Date('2026-01-10'),
         updatedAt: new Date('2026-02-26'),
       },
-      // Acme Corp monitoring mike-fullstack in api-backend
+
+      // Acme Corp monitoring mike-fullstack in api-backend (open, accepted)
       {
         _id: new ObjectId(),
         companyId: companies[0]._id,
@@ -696,25 +683,29 @@ class DatabaseSeeder {
         inviteEmail: 'mike@techmail.com',
         schedule: {
           type: 'specific_weekdays',
-          config: {
-            weekdays: [2, 4], // Tuesday, Thursday
-          },
+          config: { weekdays: [2, 4] }, // Tue, Thu
           time: '10:00',
           timezone: 'America/New_York',
           isActive: true,
-          nextRunAt: new Date('2026-02-27T10:00:00'),
-          lastRunAt: new Date('2026-02-25T10:00:00'),
+          nextRunAt: new Date('2026-02-27T15:00:00Z'), // 10:00 ET
+          lastRunAt: new Date('2026-02-25T15:00:00Z'),
         },
         fetchConfig: {
           windowType: 'since_last_run',
           dateRange: null,
         },
-        recipients: ['alice@acme-corp.com'],
+        emailConfig: {
+          recipients: [
+            { email: 'alice@acme-corp.com', type: 'company_admin' },
+          ],
+        },
         contributorNote: 'Backend team lead',
+        addedBy: this.clerkUserIds[0], // alice
         createdAt: new Date('2026-01-15'),
         updatedAt: new Date('2026-02-25'),
       },
-      // Tech Innovators monitoring emma-opensource in core-service
+
+      // Tech Innovators monitoring emma-opensource in core-service (ghost, invite sent)
       {
         _id: new ObjectId(),
         companyId: companies[1]._id,
@@ -732,19 +723,25 @@ class DatabaseSeeder {
           time: '08:00',
           timezone: 'America/Los_Angeles',
           isActive: true,
-          nextRunAt: new Date('2026-02-27T08:00:00'),
-          lastRunAt: new Date('2026-02-26T08:00:00'),
+          nextRunAt: new Date('2026-02-27T16:00:00Z'), // 08:00 PT
+          lastRunAt: new Date('2026-02-26T16:00:00Z'),
         },
         fetchConfig: {
           windowType: 'since_last_run',
           dateRange: null,
         },
-        recipients: ['diana@techinnovators.io'],
+        emailConfig: {
+          recipients: [
+            { email: 'diana@techinnovators.io', type: 'company_admin' },
+          ],
+        },
         contributorNote: 'Open source contributor - microservices expert',
+        addedBy: this.clerkUserIds[3], // diana
         createdAt: new Date('2026-02-01'),
         updatedAt: new Date('2026-02-26'),
       },
-      // Startup Labs monitoring alex-backend in mvp-product
+
+      // Startup Labs monitoring alex-backend in mvp-product (ghost)
       {
         _id: new ObjectId(),
         companyId: companies[2]._id,
@@ -758,46 +755,122 @@ class DatabaseSeeder {
         inviteEmail: null,
         schedule: {
           type: 'specific_weekdays',
-          config: {
-            weekdays: [1, 3, 5], // Monday, Wednesday, Friday
-          },
+          config: { weekdays: [1, 3, 5] }, // Mon, Wed, Fri
           time: '16:00',
           timezone: 'UTC',
           isActive: true,
-          nextRunAt: new Date('2026-02-28T16:00:00'),
-          lastRunAt: new Date('2026-02-26T16:00:00'),
+          nextRunAt: new Date('2026-02-28T16:00:00Z'),
+          lastRunAt: new Date('2026-02-26T16:00:00Z'),
         },
         fetchConfig: {
           windowType: 'since_last_run',
           dateRange: null,
         },
-        recipients: ['frank@startuplabs.dev'],
+        emailConfig: {
+          recipients: [
+            { email: 'frank@startuplabs.dev', type: 'company_admin' },
+          ],
+        },
         contributorNote: 'New hire - probation period',
+        addedBy: this.clerkUserIds[5], // frank
         createdAt: new Date('2026-02-20'),
+        updatedAt: new Date('2026-02-26'),
+      },
+
+      // Acme Corp monitoring john-dev in api-backend as well (paused)
+      {
+        _id: new ObjectId(),
+        companyId: companies[0]._id,
+        contributorId: contributors[0]._id,
+        repositoryId: repositories[2]._id,
+        githubUsername: contributors[0].githubUsername,
+        repoFullName: repositories[2].fullName,
+        monitoringType: 'ghost',
+        status: 'paused',
+        inviteStatus: 'not_sent',
+        inviteEmail: null,
+        schedule: {
+          type: 'fixed_interval',
+          config: { intervalDays: 7 },
+          time: '14:00',
+          timezone: 'America/New_York',
+          isActive: false,
+          nextRunAt: null,
+          lastRunAt: new Date('2026-02-20T19:00:00Z'),
+        },
+        fetchConfig: {
+          windowType: 'since_last_run',
+          dateRange: null,
+        },
+        emailConfig: {
+          recipients: [
+            { email: 'alice@acme-corp.com', type: 'company_admin' },
+            { email: 'charlie@acme-corp.com', type: 'custom' },
+          ],
+        },
+        contributorNote: 'Cross-repo tracking for full-stack work',
+        addedBy: this.clerkUserIds[0], // alice
+        createdAt: new Date('2026-02-01'),
+        updatedAt: new Date('2026-02-20'),
+      },
+
+      // Tech Innovators monitoring sarah-codes in frontend (open, invite sent)
+      {
+        _id: new ObjectId(),
+        companyId: companies[1]._id,
+        contributorId: contributors[1]._id,
+        repositoryId: repositories[4]._id,
+        githubUsername: contributors[1].githubUsername,
+        repoFullName: repositories[4].fullName,
+        monitoringType: 'open',
+        status: 'active',
+        inviteStatus: 'sent',
+        inviteEmail: 'sarah@example.com',
+        schedule: {
+          type: 'daily',
+          config: {},
+          time: '09:30',
+          timezone: 'America/Los_Angeles',
+          isActive: true,
+          nextRunAt: new Date('2026-02-27T17:30:00Z'), // 09:30 PT
+          lastRunAt: new Date('2026-02-26T17:30:00Z'),
+        },
+        fetchConfig: {
+          windowType: 'since_last_run',
+          dateRange: null,
+        },
+        emailConfig: {
+          recipients: [
+            { email: 'diana@techinnovators.io', type: 'company_admin' },
+            { email: 'eric@techinnovators.io', type: 'custom' },
+          ],
+        },
+        contributorNote: 'Frontend contractor shared between teams',
+        addedBy: this.clerkUserIds[3], // diana
+        createdAt: new Date('2026-02-05'),
         updatedAt: new Date('2026-02-26'),
       },
     ];
 
     await this.db.collection(COLLECTIONS.MONITORED_CONTRIBUTORS).insertMany(monitoredContributors);
-    this.insertedIds.monitoredContributors = monitoredContributors.map(mc => mc._id);
+    this.insertedIds.monitoredContributors = monitoredContributors.map((mc) => mc._id);
     console.log(`  ✓ Created ${monitoredContributors.length} monitored contributors\n`);
-    
     return monitoredContributors;
   }
 
-  /**
-   * Seed Teams Collection
-   */
+  /* ================================================================
+   *  TEAMS
+   * ================================================================ */
   async seedTeams(companies, contributors) {
     console.log('👥 Seeding teams...');
-    
+
     const teams = [
       {
         _id: new ObjectId(),
         companyId: companies[0]._id,
         name: 'Frontend Team',
         description: 'Web and mobile frontend developers',
-        createdBy: this.insertedIds.companyMembers[0],
+        createdBy: this.clerkUserIds[0], // alice (string, not ObjectId)
         memberContributorIds: [
           contributors[0]._id, // john-dev
           contributors[1]._id, // sarah-codes
@@ -810,7 +883,7 @@ class DatabaseSeeder {
         companyId: companies[0]._id,
         name: 'Backend Team',
         description: 'API and infrastructure developers',
-        createdBy: this.insertedIds.companyMembers[1],
+        createdBy: this.clerkUserIds[1], // bob
         memberContributorIds: [
           contributors[2]._id, // mike-fullstack
         ],
@@ -819,31 +892,44 @@ class DatabaseSeeder {
       },
       {
         _id: new ObjectId(),
+        companyId: companies[0]._id,
+        name: 'Full-Stack Team',
+        description: 'Cross-functional product team',
+        createdBy: this.clerkUserIds[0], // alice
+        memberContributorIds: [
+          contributors[0]._id, // john-dev
+          contributors[2]._id, // mike-fullstack
+        ],
+        createdAt: new Date('2026-02-01'),
+        updatedAt: new Date('2026-02-10'),
+      },
+      {
+        _id: new ObjectId(),
         companyId: companies[1]._id,
         name: 'Core Team',
         description: 'Main product development team',
-        createdBy: this.insertedIds.companyMembers[3],
+        createdBy: this.clerkUserIds[3], // diana
         memberContributorIds: [
           contributors[3]._id, // emma-opensource
+          contributors[1]._id, // sarah-codes
         ],
         createdAt: new Date('2026-02-01'),
-        updatedAt: new Date('2026-02-01'),
+        updatedAt: new Date('2026-02-05'),
       },
     ];
 
     await this.db.collection(COLLECTIONS.TEAMS).insertMany(teams);
-    this.insertedIds.teams = teams.map(t => t._id);
+    this.insertedIds.teams = teams.map((t) => t._id);
     console.log(`  ✓ Created ${teams.length} teams\n`);
-    
     return teams;
   }
 
-  /**
-   * Seed Invites Collection
-   */
+  /* ================================================================
+   *  INVITES
+   * ================================================================ */
   async seedInvites(monitoredContributors, companies, contributors) {
     console.log('✉️  Seeding invites...');
-    
+
     const invites = [
       // Invite for john-dev (accepted)
       {
@@ -855,10 +941,10 @@ class DatabaseSeeder {
         inviteEmail: 'john@example.com',
         clerkInvitationId: 'inv_clerk_john_001',
         status: 'accepted',
-        sentAt: new Date('2025-12-01T10:00:00'),
-        acceptedAt: new Date('2025-12-02T14:30:00'),
-        expiresAt: new Date('2025-12-15T10:00:00'),
-        createdAt: new Date('2025-12-01T10:00:00'),
+        sentAt: new Date('2025-12-01T10:00:00Z'),
+        acceptedAt: new Date('2025-12-02T14:30:00Z'),
+        expiresAt: new Date('2025-12-15T10:00:00Z'),
+        createdAt: new Date('2025-12-01T10:00:00Z'),
       },
       // Invite for mike-fullstack (accepted)
       {
@@ -870,12 +956,12 @@ class DatabaseSeeder {
         inviteEmail: 'mike@techmail.com',
         clerkInvitationId: 'inv_clerk_mike_002',
         status: 'accepted',
-        sentAt: new Date('2026-01-15T09:00:00'),
-        acceptedAt: new Date('2026-01-16T11:45:00'),
-        expiresAt: new Date('2026-01-29T09:00:00'),
-        createdAt: new Date('2026-01-15T09:00:00'),
+        sentAt: new Date('2026-01-15T09:00:00Z'),
+        acceptedAt: new Date('2026-01-16T11:45:00Z'),
+        expiresAt: new Date('2026-01-29T09:00:00Z'),
+        createdAt: new Date('2026-01-15T09:00:00Z'),
       },
-      // Invite for emma-opensource (sent, not yet accepted)
+      // Invite for emma-opensource (sent, pending)
       {
         _id: new ObjectId(),
         monitoredContributorId: monitoredContributors[3]._id,
@@ -885,28 +971,42 @@ class DatabaseSeeder {
         inviteEmail: 'emma@oss.dev',
         clerkInvitationId: 'inv_clerk_emma_003',
         status: 'sent',
-        sentAt: new Date('2026-02-01T08:00:00'),
+        sentAt: new Date('2026-02-01T08:00:00Z'),
         acceptedAt: null,
-        expiresAt: new Date('2026-02-15T08:00:00'),
-        createdAt: new Date('2026-02-01T08:00:00'),
+        expiresAt: new Date('2026-02-15T08:00:00Z'),
+        createdAt: new Date('2026-02-01T08:00:00Z'),
+      },
+      // Invite for sarah-codes from Tech Innovators (sent, pending)
+      {
+        _id: new ObjectId(),
+        monitoredContributorId: monitoredContributors[6]._id,
+        companyId: companies[1]._id,
+        contributorId: contributors[1]._id,
+        githubUsername: contributors[1].githubUsername,
+        inviteEmail: 'sarah@example.com',
+        clerkInvitationId: 'inv_clerk_sarah_004',
+        status: 'sent',
+        sentAt: new Date('2026-02-05T12:00:00Z'),
+        acceptedAt: null,
+        expiresAt: new Date('2026-02-19T12:00:00Z'),
+        createdAt: new Date('2026-02-05T12:00:00Z'),
       },
     ];
 
     await this.db.collection(COLLECTIONS.INVITES).insertMany(invites);
-    this.insertedIds.invites = invites.map(i => i._id);
+    this.insertedIds.invites = invites.map((i) => i._id);
     console.log(`  ✓ Created ${invites.length} invites\n`);
-    
     return invites;
   }
 
-  /**
-   * Seed Summary Runs Collection
-   */
+  /* ================================================================
+   *  SUMMARY RUNS
+   * ================================================================ */
   async seedSummaryRuns(monitoredContributors, companies, contributors, repositories) {
     console.log('📊 Seeding summary runs...');
-    
+
     const summaryRuns = [
-      // Successful run for john-dev
+      // Successful scheduled run for john-dev
       {
         _id: new ObjectId(),
         monitoredContributorId: monitoredContributors[0]._id,
@@ -915,12 +1015,12 @@ class DatabaseSeeder {
         repositoryId: repositories[0]._id,
         githubUsername: contributors[0].githubUsername,
         repoFullName: repositories[0].fullName,
-        scheduledAt: new Date('2026-02-26T09:00:00'),
-        startedAt: new Date('2026-02-26T09:00:15'),
-        completedAt: new Date('2026-02-26T09:02:30'),
+        scheduledAt: new Date('2026-02-26T14:00:00Z'),
+        startedAt: new Date('2026-02-26T14:00:15Z'),
+        completedAt: new Date('2026-02-26T14:02:30Z'),
         fetchWindow: {
-          from: new Date('2026-02-24T09:00:00'),
-          to: new Date('2026-02-26T09:00:00'),
+          from: new Date('2026-02-24T14:00:00Z'),
+          to: new Date('2026-02-26T14:00:00Z'),
         },
         prStats: {
           totalPRsFetched: 3,
@@ -931,14 +1031,15 @@ class DatabaseSeeder {
         contributorNoteSnapshot: 'Senior frontend developer - focus on React components',
         emailStatus: {
           status: 'sent',
-          sentAt: new Date('2026-02-26T09:03:00'),
+          sentAt: new Date('2026-02-26T14:03:00Z'),
           recipients: ['alice@acme-corp.com', 'bob@acme-corp.com'],
           failureReason: null,
         },
         triggerType: 'scheduled',
-        createdAt: new Date('2026-02-26T09:00:00'),
+        createdAt: new Date('2026-02-26T14:00:00Z'),
       },
-      // Run with no activity for sarah-codes
+
+      // No-activity scheduled run for sarah-codes
       {
         _id: new ObjectId(),
         monitoredContributorId: monitoredContributors[1]._id,
@@ -947,12 +1048,12 @@ class DatabaseSeeder {
         repositoryId: repositories[0]._id,
         githubUsername: contributors[1].githubUsername,
         repoFullName: repositories[0].fullName,
-        scheduledAt: new Date('2026-02-26T17:00:00'),
-        startedAt: new Date('2026-02-26T17:00:10'),
-        completedAt: new Date('2026-02-26T17:00:45'),
+        scheduledAt: new Date('2026-02-26T22:00:00Z'),
+        startedAt: new Date('2026-02-26T22:00:10Z'),
+        completedAt: new Date('2026-02-26T22:00:45Z'),
         fetchWindow: {
-          from: new Date('2026-02-25T17:00:00'),
-          to: new Date('2026-02-26T17:00:00'),
+          from: new Date('2026-02-25T22:00:00Z'),
+          to: new Date('2026-02-26T22:00:00Z'),
         },
         prStats: {
           totalPRsFetched: 0,
@@ -968,8 +1069,9 @@ class DatabaseSeeder {
           failureReason: 'No activity in this period',
         },
         triggerType: 'scheduled',
-        createdAt: new Date('2026-02-26T17:00:00'),
+        createdAt: new Date('2026-02-26T22:00:00Z'),
       },
+
       // Manual run for mike-fullstack
       {
         _id: new ObjectId(),
@@ -980,11 +1082,11 @@ class DatabaseSeeder {
         githubUsername: contributors[2].githubUsername,
         repoFullName: repositories[2].fullName,
         scheduledAt: null,
-        startedAt: new Date('2026-02-25T15:30:00'),
-        completedAt: new Date('2026-02-25T15:32:15'),
+        startedAt: new Date('2026-02-25T15:30:00Z'),
+        completedAt: new Date('2026-02-25T15:32:15Z'),
         fetchWindow: {
-          from: new Date('2026-02-18T00:00:00'),
-          to: new Date('2026-02-25T23:59:59'),
+          from: new Date('2026-02-18T00:00:00Z'),
+          to: new Date('2026-02-25T23:59:59Z'),
         },
         prStats: {
           totalPRsFetched: 5,
@@ -995,14 +1097,15 @@ class DatabaseSeeder {
         contributorNoteSnapshot: 'Backend team lead',
         emailStatus: {
           status: 'sent',
-          sentAt: new Date('2026-02-25T15:33:00'),
+          sentAt: new Date('2026-02-25T15:33:00Z'),
           recipients: ['alice@acme-corp.com'],
           failureReason: null,
         },
         triggerType: 'manual',
-        createdAt: new Date('2026-02-25T15:30:00'),
+        createdAt: new Date('2026-02-25T15:30:00Z'),
       },
-      // Failed run for emma-opensource
+
+      // Failed email run for emma-opensource
       {
         _id: new ObjectId(),
         monitoredContributorId: monitoredContributors[3]._id,
@@ -1011,12 +1114,12 @@ class DatabaseSeeder {
         repositoryId: repositories[3]._id,
         githubUsername: contributors[3].githubUsername,
         repoFullName: repositories[3].fullName,
-        scheduledAt: new Date('2026-02-26T08:00:00'),
-        startedAt: new Date('2026-02-26T08:00:05'),
-        completedAt: new Date('2026-02-26T08:00:20'),
+        scheduledAt: new Date('2026-02-26T16:00:00Z'),
+        startedAt: new Date('2026-02-26T16:00:05Z'),
+        completedAt: new Date('2026-02-26T16:00:20Z'),
         fetchWindow: {
-          from: new Date('2026-02-25T08:00:00'),
-          to: new Date('2026-02-26T08:00:00'),
+          from: new Date('2026-02-25T16:00:00Z'),
+          to: new Date('2026-02-26T16:00:00Z'),
         },
         prStats: {
           totalPRsFetched: 2,
@@ -1032,9 +1135,10 @@ class DatabaseSeeder {
           failureReason: 'SMTP connection timeout',
         },
         triggerType: 'scheduled',
-        createdAt: new Date('2026-02-26T08:00:00'),
+        createdAt: new Date('2026-02-26T16:00:00Z'),
       },
-      // Recent successful run for alex-backend
+
+      // Successful run for alex-backend
       {
         _id: new ObjectId(),
         monitoredContributorId: monitoredContributors[4]._id,
@@ -1043,12 +1147,12 @@ class DatabaseSeeder {
         repositoryId: repositories[5]._id,
         githubUsername: contributors[4].githubUsername,
         repoFullName: repositories[5].fullName,
-        scheduledAt: new Date('2026-02-26T16:00:00'),
-        startedAt: new Date('2026-02-26T16:00:08'),
-        completedAt: new Date('2026-02-26T16:01:45'),
+        scheduledAt: new Date('2026-02-26T16:00:00Z'),
+        startedAt: new Date('2026-02-26T16:00:08Z'),
+        completedAt: new Date('2026-02-26T16:01:45Z'),
         fetchWindow: {
-          from: new Date('2026-02-24T16:00:00'),
-          to: new Date('2026-02-26T16:00:00'),
+          from: new Date('2026-02-24T16:00:00Z'),
+          to: new Date('2026-02-26T16:00:00Z'),
         },
         prStats: {
           totalPRsFetched: 4,
@@ -1059,25 +1163,90 @@ class DatabaseSeeder {
         contributorNoteSnapshot: 'New hire - probation period',
         emailStatus: {
           status: 'sent',
-          sentAt: new Date('2026-02-26T16:02:00'),
+          sentAt: new Date('2026-02-26T16:02:00Z'),
           recipients: ['frank@startuplabs.dev'],
           failureReason: null,
         },
         triggerType: 'scheduled',
-        createdAt: new Date('2026-02-26T16:00:00'),
+        createdAt: new Date('2026-02-26T16:00:00Z'),
+      },
+
+      // Older scheduled run for john-dev (for analytics/timeline depth)
+      {
+        _id: new ObjectId(),
+        monitoredContributorId: monitoredContributors[0]._id,
+        companyId: companies[0]._id,
+        contributorId: contributors[0]._id,
+        repositoryId: repositories[0]._id,
+        githubUsername: contributors[0].githubUsername,
+        repoFullName: repositories[0].fullName,
+        scheduledAt: new Date('2026-02-24T14:00:00Z'),
+        startedAt: new Date('2026-02-24T14:00:12Z'),
+        completedAt: new Date('2026-02-24T14:01:50Z'),
+        fetchWindow: {
+          from: new Date('2026-02-21T14:00:00Z'),
+          to: new Date('2026-02-24T14:00:00Z'),
+        },
+        prStats: {
+          totalPRsFetched: 2,
+          prNumbers: [121, 122],
+        },
+        hasActivity: true,
+        aiSummary: 'John submitted two PRs: one to refactor the navigation component for better accessibility and another adding dark mode support to the theme switcher.',
+        contributorNoteSnapshot: 'Senior frontend developer - focus on React components',
+        emailStatus: {
+          status: 'sent',
+          sentAt: new Date('2026-02-24T14:02:10Z'),
+          recipients: ['alice@acme-corp.com', 'bob@acme-corp.com'],
+          failureReason: null,
+        },
+        triggerType: 'scheduled',
+        createdAt: new Date('2026-02-24T14:00:00Z'),
+      },
+
+      // Run for sarah-codes from Tech Innovators (frontend repo)
+      {
+        _id: new ObjectId(),
+        monitoredContributorId: monitoredContributors[6]._id,
+        companyId: companies[1]._id,
+        contributorId: contributors[1]._id,
+        repositoryId: repositories[4]._id,
+        githubUsername: contributors[1].githubUsername,
+        repoFullName: repositories[4].fullName,
+        scheduledAt: new Date('2026-02-26T17:30:00Z'),
+        startedAt: new Date('2026-02-26T17:30:08Z'),
+        completedAt: new Date('2026-02-26T17:31:20Z'),
+        fetchWindow: {
+          from: new Date('2026-02-25T17:30:00Z'),
+          to: new Date('2026-02-26T17:30:00Z'),
+        },
+        prStats: {
+          totalPRsFetched: 1,
+          prNumbers: [501],
+        },
+        hasActivity: true,
+        aiSummary: 'Sarah opened a PR to add responsive breakpoints and mobile-first layout improvements to the dashboard page.',
+        contributorNoteSnapshot: 'Frontend contractor shared between teams',
+        emailStatus: {
+          status: 'sent',
+          sentAt: new Date('2026-02-26T17:31:30Z'),
+          recipients: ['diana@techinnovators.io', 'eric@techinnovators.io'],
+          failureReason: null,
+        },
+        triggerType: 'scheduled',
+        createdAt: new Date('2026-02-26T17:30:00Z'),
       },
     ];
 
     await this.db.collection(COLLECTIONS.SUMMARY_RUNS).insertMany(summaryRuns);
-    this.insertedIds.summaryRuns = summaryRuns.map(sr => sr._id);
+    this.insertedIds.summaryRuns = summaryRuns.map((sr) => sr._id);
     console.log(`  ✓ Created ${summaryRuns.length} summary runs\n`);
-    
     return summaryRuns;
   }
 
-  /**
-   * Main seeding orchestration
-   */
+  /* ================================================================
+   *  MAIN SEEDING ORCHESTRATION
+   * ================================================================ */
   async seed(clearExisting = false) {
     console.log('🌱 Starting database seeding...\n');
     console.log('═══════════════════════════════════════════════════\n');
@@ -1105,7 +1274,7 @@ class DatabaseSeeder {
       const monitoredContributors = await this.seedMonitoredContributors(
         companies,
         contributors,
-        repositories
+        repositories,
       );
       const teams = await this.seedTeams(companies, contributors);
       const invites = await this.seedInvites(monitoredContributors, companies, contributors);
@@ -1113,7 +1282,7 @@ class DatabaseSeeder {
         monitoredContributors,
         companies,
         contributors,
-        repositories
+        repositories,
       );
 
       console.log('═══════════════════════════════════════════════════');
@@ -1132,7 +1301,6 @@ class DatabaseSeeder {
       console.log(`   ${invites.length} invites`);
       console.log(`   ${summaryRuns.length} summary runs`);
       console.log('');
-
     } catch (error) {
       console.error('\n❌ Seeding failed:', error);
       throw error;
@@ -1159,7 +1327,7 @@ async function main() {
 
 // Run if called directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     console.error('Fatal error:', error);
     process.exit(1);
   });
