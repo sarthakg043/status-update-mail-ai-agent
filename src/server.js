@@ -8,6 +8,7 @@ require('dotenv').config();
 const { createApp } = require('./api/app');
 const { getMongoConnection } = require('./database/mongodb');
 const { initAllCollections } = require('./database/initCollections');
+const { startScheduler } = require('./scheduler');
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,6 +32,9 @@ async function startServer() {
       console.log(`\n🚀  API server listening on http://localhost:${PORT}`);
       console.log(`    Health check: http://localhost:${PORT}/health`);
       console.log(`    API base:     http://localhost:${PORT}/v1\n`);
+
+      // Start the in-process scheduler after the server is ready
+      startScheduler();
     });
   } catch (err) {
     console.error('Failed to start server:', err);

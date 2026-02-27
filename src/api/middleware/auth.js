@@ -44,6 +44,9 @@ async function requireCompany(req, _res, next) {
 
     const member = await companyMemberService.findCompanyMember(companyId, clerkUserId);
     if (!member || !member.isActive) {
+      console.warn(
+        `[requireCompany] Access denied – companyId=${companyId}, clerkUserId=${clerkUserId}, member=${member ? `found(isActive=${member.isActive})` : 'null'}`,
+      );
       throw new AppError('UNAUTHORIZED', 'You do not have permission to perform this action.', 403);
     }
 

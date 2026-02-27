@@ -115,7 +115,15 @@ router.get(
       });
     }
 
-    throw new AppError('NOT_FOUND', 'No account found for this user.', 404);
+    // User is authenticated via Clerk but hasn't onboarded yet — not an error
+    return res.json({
+      success: true,
+      data: {
+        clerkUserId,
+        type: null,
+        needsOnboarding: true,
+      },
+    });
   }),
 );
 

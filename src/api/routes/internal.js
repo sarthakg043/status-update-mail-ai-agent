@@ -13,6 +13,8 @@ const { MonitoredContributorService } = require('../../database/services/Monitor
 const { SummaryRunService } = require('../../database/services/SummaryRunService');
 const { RepositoryService } = require('../../database/services/RepositoryService');
 
+const { calculateNextRunAt } = require('../utils/scheduleUtils');
+
 const monitoredContributorService = new MonitoredContributorService();
 const summaryRunService = new SummaryRunService();
 const repositoryService = new RepositoryService();
@@ -136,50 +138,5 @@ router.patch(
     });
   }),
 );
-
-/**
- * Calculate next run time based on schedule config.
- */
-function calculateNextRunAt(schedule) {
-  if (!schedule) return null;
-
-  const now = new Date();
-  const [hours, minutes] = (schedule.time || '09:00').split(':').map(Number);
-
-  if (schedule.type === 'daily') {
-    const next = new Date(now);
-    next.setUTCHours(hours, minutes, 0, 0);
-    if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
-    return next;
-  }
-
-  if (schedule.type === 'specific_weekdays') {
-    const weekdays = schedule.config?.weekdays || [1, 2, 3, 4, 5]; // Mon-Fri default
-    const next = new Date(now);
-    next.setUTCHours(hours, minutes, 0, 0);
-
-    for (let i = 0; i < 8; i++) {
-      const candidate = new Date(next);
-      candidate.setUTCDate(candidate.getUTCDate() + i);
-      if (weekdays.includes(candidate.getUTCDay()) && candidate > now) {
-        return candidate;
-      }
-    }
-  }
-
-  if (schedule.type === 'interval_days') {
-    const intervalDays = schedule.config?.intervalDays || 1;
-    const next = new Date(now);
-    next.setUTCDate(next.getUTCDate() + intervalDays);
-    next.setUTCHours(hours, minutes, 0, 0);
-    return next;
-  }
-
-  // Fallback: next day
-  const next = new Date(now);
-  next.setUTCDate(next.getUTCDate() + 1);
-  next.setUTCHours(hours, minutes, 0, 0);
-  return next;
-}
 
 module.exports = router;

@@ -11,6 +11,7 @@
  */
 
 const { Router } = require('express');
+const { ObjectId } = require('mongodb');
 const { asyncHandler, AppError, requireAuth, requireCompany, requireRole } = require('../middleware');
 
 const { MonitoredContributorService } = require('../../database/services/MonitoredContributorService');
@@ -18,6 +19,8 @@ const { ContributorService } = require('../../database/services/ContributorServi
 const { RepositoryService } = require('../../database/services/RepositoryService');
 const { SummaryRunService } = require('../../database/services/SummaryRunService');
 const { InviteService } = require('../../database/services/InviteService');
+
+const { calculateNextRunAt } = require('../utils/scheduleUtils');
 
 const monitoredContributorService = new MonitoredContributorService();
 const contributorService = new ContributorService();
@@ -59,18 +62,54 @@ router.post(
       githubUserId: 0, // Will be enriched later
     });
 
-    const mc = await monitoredContributorService.createMonitoring({
-      companyId: req.companyId,
-      contributorId: contributor._id.toString(),
-      repositoryId,
-      githubUsername,
-      repoFullName: repo.fullName,
-      monitoringType: monitoringType || 'ghost',
-      schedule,
-      fetchConfig,
-      emailConfig,
-      addedBy: req.companyMember.clerkUserId,
+    // Compute the initial nextRunAt from the schedule so the scheduler can pick it up
+    const mergedSchedule = {
+      type: 'daily',
+      config: {},
+      time: '09:00',
+      timezone: 'UTC',
+      isActive: true,
+      nextRunAt: null,
+      lastRunAt: null,
+      ...schedule,
+    };
+    mergedSchedule.nextRunAt = calculateNextRunAt(mergedSchedule);
+
+    // Check if a soft-deleted record already exists for this combo — reactivate it
+    const existing = await monitoredContributorService.findOne({
+      companyId: new ObjectId(req.companyId),
+      contributorId: new ObjectId(contributor._id.toString()),
+      repositoryId: new ObjectId(repositoryId),
     });
+
+    let mc;
+    if (existing) {
+      // Reactivate the existing record with updated config
+      await monitoredContributorService.updateById(existing._id.toString(), {
+        status: 'active',
+        monitoringType: monitoringType || 'ghost',
+        schedule: mergedSchedule,
+        fetchConfig: fetchConfig || { windowType: 'since_last_run', dateRange: null },
+        emailConfig: emailConfig || { recipients: [] },
+        inviteStatus: 'not_sent',
+        inviteEmail: null,
+        addedBy: req.companyMember.clerkUserId,
+      });
+      mc = await monitoredContributorService.findById(existing._id.toString());
+    } else {
+      mc = await monitoredContributorService.createMonitoring({
+        companyId: req.companyId,
+        contributorId: contributor._id.toString(),
+        repositoryId,
+        githubUsername,
+        repoFullName: repo.fullName,
+        monitoringType: monitoringType || 'ghost',
+        schedule: mergedSchedule,
+        fetchConfig,
+        emailConfig,
+        addedBy: req.companyMember.clerkUserId,
+      });
+    }
 
     // If open monitoring with invite email, create an invite
     let inviteStatus = null;
@@ -116,9 +155,9 @@ router.get(
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
-    // Build query
-    const query = { companyId: req.companyId };
-    if (repoId) query.repositoryId = repoId;
+    // Build query — companyId is stored as ObjectId in the DB
+    const query = { companyId: new ObjectId(req.companyId) };
+    if (repoId) query.repositoryId = new ObjectId(repoId);
     if (status) query.status = status;
     else query.status = { $ne: 'removed' };
     if (monitoringType) query.monitoringType = monitoringType;
@@ -138,6 +177,7 @@ router.get(
         total,
         page: pageNum,
         limit: limitNum,
+        totalPages: Math.ceil(total / limitNum),
         items: items.map((mc) => ({
           _id: mc._id.toString(),
           githubUsername: mc.githubUsername,
@@ -151,6 +191,7 @@ router.get(
             nextRunAt: mc.schedule?.nextRunAt,
             lastRunAt: mc.schedule?.lastRunAt,
           },
+          emailConfig: mc.emailConfig || { recipients: [] },
         })),
       },
     });
@@ -189,7 +230,7 @@ router.patch(
     }
     if (fetchConfig) updates.fetchConfig = fetchConfig;
     if (monitoringType) updates.monitoringType = monitoringType;
-    if (emailConfig?.recipients) {
+    if (emailConfig && Array.isArray(emailConfig.recipients)) {
       await monitoredContributorService.updateRecipients(req.params.id, emailConfig.recipients);
     }
 

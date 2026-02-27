@@ -9,6 +9,7 @@
  */
 
 const { Router } = require('express');
+const { ObjectId } = require('mongodb');
 const { asyncHandler, AppError, requireAuth, requireCompany } = require('../middleware');
 
 const { SummaryRunService } = require('../../database/services/SummaryRunService');
@@ -43,11 +44,11 @@ router.get(
     const pageNum = parseInt(page, 10);
     const limitNum = parseInt(limit, 10);
 
-    // Build filter
-    const query = { companyId: req.companyId };
-    if (monitoredContributorId) query.monitoredContributorId = monitoredContributorId;
-    if (contributorId) query.contributorId = contributorId;
-    if (repositoryId) query.repositoryId = repositoryId;
+    // Build filter — IDs stored as ObjectId in the DB
+    const query = { companyId: new ObjectId(req.companyId) };
+    if (monitoredContributorId) query.monitoredContributorId = new ObjectId(monitoredContributorId);
+    if (contributorId) query.contributorId = new ObjectId(contributorId);
+    if (repositoryId) query.repositoryId = new ObjectId(repositoryId);
     if (emailStatus) query['emailStatus.status'] = emailStatus;
     if (from || to) {
       query.scheduledAt = {};
@@ -200,8 +201,8 @@ router.get(
 
     // Find runs for this contributor within this company
     const query = {
-      companyId: req.companyId,
-      contributorId: req.params.contributorId,
+      companyId: new ObjectId(req.companyId),
+      contributorId: new ObjectId(req.params.contributorId),
       scheduledAt: { $gte: startDate, $lte: endDate },
     };
 
@@ -267,8 +268,8 @@ router.get(
 
     // Get runs for all team members
     const query = {
-      companyId: req.companyId,
-      contributorId: { $in: memberIds },
+      companyId: new ObjectId(req.companyId),
+      contributorId: { $in: memberIds.map((id) => new ObjectId(id)) },
       scheduledAt: { $gte: startDate, $lte: endDate },
     };
 
