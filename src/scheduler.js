@@ -32,7 +32,18 @@ async function executeRun(mc) {
   const runLabel = `[scheduler] ${mc.githubUsername} @ ${mc.repoFullName}`;
   console.log(`${runLabel}: starting run`);
 
-  // 1. Create a summary_run record
+  // 1. Determine trigger type (manual if flagged, otherwise scheduled)
+  const isManual = !!mc.pendingManualTrigger;
+  const manualDateRange = mc.manualDateRange || null;
+  if (isManual) {
+    // Clear the manual flag and date range so they don't persist
+    await monitoredContributorService.updateById(mc._id.toString(), {
+      pendingManualTrigger: false,
+      manualDateRange: null,
+    });
+  }
+
+  // 2. Create a summary_run record
   const run = await summaryRunService.createRun({
     monitoredContributorId: mc._id.toString(),
     companyId: mc.companyId.toString(),
@@ -41,7 +52,7 @@ async function executeRun(mc) {
     githubUsername: mc.githubUsername,
     repoFullName: mc.repoFullName,
     scheduledAt: mc.schedule?.nextRunAt || new Date(),
-    triggerType: 'scheduled',
+    triggerType: isManual ? 'manual' : 'scheduled',
   });
 
   try {
@@ -55,12 +66,18 @@ async function executeRun(mc) {
     }
 
     // 3. Determine fetch window
-    const endDate = new Date();
+    let endDate;
     let startDate;
-    if (mc.fetchConfig?.windowType === 'since_last_run' && mc.schedule?.lastRunAt) {
+    if (isManual && manualDateRange?.from && manualDateRange?.to) {
+      // Use the date range provided by the manual trigger
+      startDate = new Date(manualDateRange.from);
+      endDate = new Date(manualDateRange.to);
+    } else if (mc.fetchConfig?.windowType === 'since_last_run' && mc.schedule?.lastRunAt) {
+      endDate = new Date();
       startDate = new Date(mc.schedule.lastRunAt);
     } else {
       // Default: last 24 hours
+      endDate = new Date();
       startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
     }
 

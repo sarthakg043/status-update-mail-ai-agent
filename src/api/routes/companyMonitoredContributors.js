@@ -345,23 +345,30 @@ router.post(
       throw new AppError('NOT_FOUND', 'Monitored contributor not found.', 404);
     }
 
-    // Create a summary run
-    const run = await summaryRunService.createRun({
-      monitoredContributorId: mc._id.toString(),
-      companyId: req.companyId,
-      contributorId: mc.contributorId?.toString(),
-      repositoryId: mc.repositoryId?.toString(),
-      githubUsername: mc.githubUsername,
-      repoFullName: mc.repoFullName,
-      triggerType: 'manual',
-    });
+    const { from, to } = req.body;
+
+    // Build the manual trigger data
+    const updateData = {
+      'schedule.nextRunAt': new Date(),
+      'schedule.isActive': true,
+      pendingManualTrigger: true,
+    };
+
+    // Store the manual date range so the scheduler uses it
+    if (from && to) {
+      updateData.manualDateRange = {
+        from: new Date(from),
+        to: new Date(to),
+      };
+    }
+
+    await monitoredContributorService.updateById(mc._id.toString(), updateData);
 
     res.status(202).json({
       success: true,
       data: {
-        runId: run._id.toString(),
-        message: 'Summary run queued.',
-        estimatedCompletionSeconds: 15,
+        message: 'Manual run triggered. It will be processed within 60 seconds.',
+        estimatedCompletionSeconds: 60,
       },
     });
   }),
