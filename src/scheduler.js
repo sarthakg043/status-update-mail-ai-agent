@@ -32,7 +32,18 @@ async function executeRun(mc) {
   const runLabel = `[scheduler] ${mc.githubUsername} @ ${mc.repoFullName}`;
   console.log(`${runLabel}: starting run`);
 
-  // 1. Create a summary_run record
+  // 1. Determine trigger type (manual if flagged, otherwise scheduled)
+  const isManual = !!mc.pendingManualTrigger;
+  const manualDateRange = mc.manualDateRange || null;
+  if (isManual) {
+    // Clear the manual flag and date range so they don't persist
+    await monitoredContributorService.updateById(mc._id.toString(), {
+      pendingManualTrigger: false,
+      manualDateRange: null,
+    });
+  }
+
+  // 2. Create a summary_run record
   const run = await summaryRunService.createRun({
     monitoredContributorId: mc._id.toString(),
     companyId: mc.companyId.toString(),
@@ -41,7 +52,7 @@ async function executeRun(mc) {
     githubUsername: mc.githubUsername,
     repoFullName: mc.repoFullName,
     scheduledAt: mc.schedule?.nextRunAt || new Date(),
-    triggerType: 'scheduled',
+    triggerType: isManual ? 'manual' : 'scheduled',
   });
 
   try {
@@ -55,12 +66,18 @@ async function executeRun(mc) {
     }
 
     // 3. Determine fetch window
-    const endDate = new Date();
+    let endDate;
     let startDate;
-    if (mc.fetchConfig?.windowType === 'since_last_run' && mc.schedule?.lastRunAt) {
+    if (isManual && manualDateRange?.from && manualDateRange?.to) {
+      // Use the date range provided by the manual trigger
+      startDate = new Date(manualDateRange.from);
+      endDate = new Date(manualDateRange.to);
+    } else if (mc.fetchConfig?.windowType === 'since_last_run' && mc.schedule?.lastRunAt) {
+      endDate = new Date();
       startDate = new Date(mc.schedule.lastRunAt);
     } else {
       // Default: last 24 hours
+      endDate = new Date();
       startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000);
     }
 
@@ -154,21 +171,48 @@ async function executeRun(mc) {
     console.log(`${runLabel}: [debug] EMAIL_USER=${process.env.EMAIL_USER}, EMAIL_SERVICE=${process.env.EMAIL_SERVICE || 'gmail'}`);
 
     if (hasActivity && aiSummary && recipients.length > 0) {
+      // ── Plan-limit guard: check email quota before sending ──
+      let emailLimitReached = false;
       try {
-        const emailService = new EmailService({
-          service: process.env.EMAIL_SERVICE || 'gmail',
-          user: process.env.EMAIL_USER,
-          appPassword: process.env.EMAIL_APP_PASSWORD,
-        });
-        const subject = `Status Update: ${mc.githubUsername} – ${mc.repoFullName}`;
-        console.log(`${runLabel}: [debug] Sending email – from=${process.env.EMAIL_USER}, to=${recipients.join(', ')}, subject="${subject}"`);
-        await emailService.sendEmail(recipients.join(','), subject, aiSummary);
-        emailStatus = { status: 'sent', sentAt: new Date(), recipients, failureReason: null };
-        console.log(`${runLabel}: email sent to ${recipients.join(', ')}`);
-      } catch (err) {
-        emailStatus = { status: 'failed', sentAt: null, recipients, failureReason: err.message };
-        console.warn(`${runLabel}: email send error – ${err.message}`);
-        console.warn(`${runLabel}: [debug] email error stack: ${err.stack}`);
+        const companyDoc = await companyService.findById(mc.companyId.toString());
+        if (companyDoc) {
+          const maxEmails = companyDoc.subscription?.limits?.maxEmailsPerMonth ?? 50;
+          const sentEmails = companyDoc.subscription?.usage?.emailsSentThisMonth ?? 0;
+          if (sentEmails >= maxEmails) {
+            emailLimitReached = true;
+            emailStatus = {
+              status: 'skipped',
+              sentAt: null,
+              recipients,
+              failureReason: `Monthly email limit reached (${maxEmails}). Upgrade your plan to send more.`,
+            };
+            console.log(`${runLabel}: email skipped – monthly limit reached (${sentEmails}/${maxEmails})`);
+          }
+        }
+      } catch (limitErr) {
+        console.warn(`${runLabel}: could not check email limit – ${limitErr.message}`);
+      }
+
+      if (!emailLimitReached) {
+        try {
+          const emailService = new EmailService({
+            service: process.env.EMAIL_SERVICE || 'gmail',
+            user: process.env.EMAIL_USER,
+            appPassword: process.env.EMAIL_APP_PASSWORD,
+          });
+          const subject = `Status Update: ${mc.githubUsername} – ${mc.repoFullName}`;
+          console.log(`${runLabel}: [debug] Sending email – from=${process.env.EMAIL_USER}, to=${recipients.join(', ')}, subject="${subject}"`);
+          await emailService.sendEmail(recipients.join(','), subject, aiSummary);
+          emailStatus = { status: 'sent', sentAt: new Date(), recipients, failureReason: null };
+          console.log(`${runLabel}: email sent to ${recipients.join(', ')}`);
+
+          // Increment email usage counter
+          await companyService.incrementUsage(mc.companyId.toString(), 'emailsSentThisMonth');
+        } catch (err) {
+          emailStatus = { status: 'failed', sentAt: null, recipients, failureReason: err.message };
+          console.warn(`${runLabel}: email send error – ${err.message}`);
+          console.warn(`${runLabel}: [debug] email error stack: ${err.stack}`);
+        }
       }
     } else {
       const reason = !hasActivity
@@ -182,7 +226,7 @@ async function executeRun(mc) {
 
     // 7. Complete the run record
     await summaryRunService.completeRun(run._id.toString(), {
-      fetchWindow: { start: startDate, end: endDate },
+      fetchWindow: { from: startDate, to: endDate },
       prStats,
       hasActivity,
       aiSummary,

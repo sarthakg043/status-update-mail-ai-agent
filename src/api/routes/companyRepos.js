@@ -13,9 +13,11 @@ const { Octokit } = require('@octokit/rest');
 const { asyncHandler, AppError, requireAuth, requireCompany, requireRole } = require('../middleware');
 const { RepositoryService } = require('../../database/services/RepositoryService');
 const { MonitoredContributorService } = require('../../database/services/MonitoredContributorService');
+const { CompanyService } = require('../../database/services/CompanyService');
 
 const repositoryService = new RepositoryService();
 const monitoredContributorService = new MonitoredContributorService();
+const companyService = new CompanyService();
 const router = Router();
 
 router.use(requireAuth, requireCompany);
@@ -28,6 +30,22 @@ router.post(
     const { accessToken, owner, repoName } = req.body;
     if (!accessToken || !owner || !repoName) {
       throw new AppError('VALIDATION', 'accessToken, owner, and repoName are required.', 400);
+    }
+
+    // ── Plan-limit guard: check repo quota before proceeding ──
+    const company = await companyService.findById(req.companyId);
+    if (!company) {
+      throw new AppError('NOT_FOUND', 'Company not found.', 404);
+    }
+    const { limits = {}, usage = {} } = company.subscription || {};
+    const maxRepos = limits.maxRepos ?? 1;
+    const currentRepos = usage.reposCount ?? 0;
+    if (currentRepos >= maxRepos) {
+      throw new AppError(
+        'PLAN_LIMIT',
+        `Repository limit reached. Your plan allows a maximum of ${maxRepos} repo(s). Please upgrade your plan to add more repositories.`,
+        403,
+      );
     }
 
     // Validate token against GitHub
@@ -46,9 +64,34 @@ router.post(
 
     const fullName = `${owner}/${repoName}`;
 
-    // Check for duplicate
+    // Check for duplicate — reactivate if soft-deleted
     const existing = await repositoryService.findByFullName(req.companyId, fullName);
     if (existing) {
+      if (existing.status === 'removed') {
+        // Reactivate the soft-deleted repo with the new token
+        await repositoryService.updateById(existing._id.toString(), {
+          status: 'active',
+          encryptedAccessToken: accessToken,
+          tokenAddedBy: req.companyMember.clerkUserId,
+          githubRepoId: ghRepo.id,
+          isPrivate: ghRepo.private,
+          lastSyncedAt: null,
+        });
+
+        // Increment usage counter
+        await companyService.incrementUsage(req.companyId, 'reposCount');
+
+        return res.status(201).json({
+          success: true,
+          data: {
+            _id: existing._id.toString(),
+            fullName: existing.fullName,
+            isPrivate: ghRepo.private,
+            status: 'active',
+            createdAt: existing.createdAt,
+          },
+        });
+      }
       throw new AppError('DUPLICATE', `Repository ${fullName} is already onboarded.`, 409);
     }
 
@@ -62,6 +105,9 @@ router.post(
       encryptedAccessToken: accessToken, // In production, encrypt before storing
       tokenAddedBy: req.companyMember.clerkUserId,
     });
+
+    // Increment usage counter
+    await companyService.incrementUsage(req.companyId, 'reposCount');
 
     res.status(201).json({
       success: true,
@@ -159,6 +205,14 @@ router.delete(
 
     // Soft-delete the repo
     await repositoryService.setStatus(req.params.repoId, 'removed');
+
+    // Decrement repo usage counter
+    await companyService.incrementUsage(req.companyId, 'reposCount', -1);
+
+    // Decrement contributor usage for each monitor that was actually active (now paused)
+    if (pausedCount > 0) {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -pausedCount);
+    }
 
     res.json({
       success: true,

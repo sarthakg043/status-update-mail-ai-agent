@@ -19,6 +19,7 @@ const { ContributorService } = require('../../database/services/ContributorServi
 const { RepositoryService } = require('../../database/services/RepositoryService');
 const { SummaryRunService } = require('../../database/services/SummaryRunService');
 const { InviteService } = require('../../database/services/InviteService');
+const { CompanyService } = require('../../database/services/CompanyService');
 
 const { calculateNextRunAt } = require('../utils/scheduleUtils');
 
@@ -27,6 +28,7 @@ const contributorService = new ContributorService();
 const repositoryService = new RepositoryService();
 const summaryRunService = new SummaryRunService();
 const inviteService = new InviteService();
+const companyService = new CompanyService();
 
 const router = Router();
 router.use(requireAuth, requireCompany);
@@ -48,6 +50,22 @@ router.post(
 
     if (!githubUsername || !repositoryId) {
       throw new AppError('VALIDATION', 'githubUsername and repositoryId are required.', 400);
+    }
+
+    // ── Plan-limit guard: check contributor quota before proceeding ──
+    const company = await companyService.findById(req.companyId);
+    if (!company) {
+      throw new AppError('NOT_FOUND', 'Company not found.', 404);
+    }
+    const { limits = {}, usage = {} } = company.subscription || {};
+    const maxContributors = limits.maxContributors ?? 5;
+    const currentContributors = usage.contributorsCount ?? 0;
+    if (currentContributors >= maxContributors) {
+      throw new AppError(
+        'PLAN_LIMIT',
+        `Contributor limit reached. Your plan allows a maximum of ${maxContributors} monitored contributor(s). Please upgrade your plan to add more.`,
+        403,
+      );
     }
 
     // Validate repo belongs to company
@@ -113,6 +131,12 @@ router.post(
 
     // If open monitoring with invite email, create an invite
     let inviteStatus = null;
+
+    // Increment usage counter only for genuinely new or reactivated-from-removed contributors
+    if (!existing || existing.status === 'removed') {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount');
+    }
+
     if (monitoringType === 'open' && inviteEmail) {
       await inviteService.createInvite({
         monitoredContributorId: mc._id.toString(),
@@ -238,9 +262,34 @@ router.patch(
       await monitoredContributorService.updateById(req.params.id, updates);
     }
 
-    // Handle status change
-    if (status === 'paused') await monitoredContributorService.pause(req.params.id);
-    if (status === 'active') await monitoredContributorService.resume(req.params.id);
+    // Handle status change with usage tracking
+    const prevStatus = mc.status;
+    if (status === 'paused' && prevStatus === 'active') {
+      await monitoredContributorService.pause(req.params.id);
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
+    } else if (status === 'active' && prevStatus !== 'active') {
+      // ── Plan-limit guard: check contributor quota before reactivating ──
+      const companyForResume = await companyService.findById(req.companyId);
+      if (companyForResume) {
+        const resumeLimits = companyForResume.subscription?.limits || {};
+        const resumeUsage = companyForResume.subscription?.usage || {};
+        const maxC = resumeLimits.maxContributors ?? 5;
+        const curC = resumeUsage.contributorsCount ?? 0;
+        if (curC >= maxC) {
+          throw new AppError(
+            'PLAN_LIMIT',
+            `Contributor limit reached. Your plan allows a maximum of ${maxC} monitored contributor(s). Please upgrade your plan to add more.`,
+            403,
+          );
+        }
+      }
+      await monitoredContributorService.resume(req.params.id);
+      await companyService.incrementUsage(req.companyId, 'contributorsCount');
+    } else if (status === 'paused') {
+      await monitoredContributorService.pause(req.params.id);
+    } else if (status === 'active') {
+      await monitoredContributorService.resume(req.params.id);
+    }
 
     // Fetch updated record
     const updated = await monitoredContributorService.findById(req.params.id);
@@ -270,7 +319,14 @@ router.delete(
       throw new AppError('NOT_FOUND', 'Monitored contributor not found.', 404);
     }
 
+    // Only decrement if the contributor was actually counted (not already removed)
+    const wasActive = mc.status !== 'removed';
+
     await monitoredContributorService.remove(req.params.id);
+
+    if (wasActive) {
+      await companyService.incrementUsage(req.companyId, 'contributorsCount', -1);
+    }
 
     res.json({
       success: true,
@@ -289,23 +345,30 @@ router.post(
       throw new AppError('NOT_FOUND', 'Monitored contributor not found.', 404);
     }
 
-    // Create a summary run
-    const run = await summaryRunService.createRun({
-      monitoredContributorId: mc._id.toString(),
-      companyId: req.companyId,
-      contributorId: mc.contributorId?.toString(),
-      repositoryId: mc.repositoryId?.toString(),
-      githubUsername: mc.githubUsername,
-      repoFullName: mc.repoFullName,
-      triggerType: 'manual',
-    });
+    const { from, to } = req.body;
+
+    // Build the manual trigger data
+    const updateData = {
+      'schedule.nextRunAt': new Date(),
+      'schedule.isActive': true,
+      pendingManualTrigger: true,
+    };
+
+    // Store the manual date range so the scheduler uses it
+    if (from && to) {
+      updateData.manualDateRange = {
+        from: new Date(from),
+        to: new Date(to),
+      };
+    }
+
+    await monitoredContributorService.updateById(mc._id.toString(), updateData);
 
     res.status(202).json({
       success: true,
       data: {
-        runId: run._id.toString(),
-        message: 'Summary run queued.',
-        estimatedCompletionSeconds: 15,
+        message: 'Manual run triggered. It will be processed within 60 seconds.',
+        estimatedCompletionSeconds: 60,
       },
     });
   }),
