@@ -209,7 +209,7 @@ async function executeRun(mc) {
 
     // 7. Complete the run record
     await summaryRunService.completeRun(run._id.toString(), {
-      fetchWindow: { start: startDate, end: endDate },
+      fetchWindow: { from: startDate, to: endDate },
       prStats,
       hasActivity,
       aiSummary,
